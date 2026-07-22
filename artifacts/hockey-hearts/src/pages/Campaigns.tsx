@@ -10,13 +10,13 @@ import teamImage from "@assets/about-team.jpg"; // reuse as placeholder
 export default function Campaigns() {
   const campaigns = [
     {
-      id: "equip-2024",
+      id: "equip-2026",
       title: "Gear Up for Winter",
       description: "Providing full sets of high-quality hockey equipment to 500 underserved children across the state before the winter season begins. A single set of gear costs upwards of $500, making this a critical need.",
       category: "Hockey" as const,
       goal: 50000,
       raised: 32450,
-      deadline: "Oct 31, 2024",
+      deadline: "Oct 31, 2026",
       image: camp3Image
     },
     {
@@ -26,7 +26,7 @@ export default function Campaigns() {
       category: "Health" as const,
       goal: 75000,
       raised: 61200,
-      deadline: "Dec 15, 2024",
+      deadline: "Dec 15, 2026",
       image: camp2Image
     },
     {
@@ -36,7 +36,7 @@ export default function Campaigns() {
       category: "Hockey" as const,
       goal: 25000,
       raised: 8900,
-      deadline: "Nov 30, 2024",
+      deadline: "Nov 30, 2026",
       image: camp1Image
     },
     {
@@ -46,7 +46,7 @@ export default function Campaigns() {
       category: "Health" as const,
       goal: 120000,
       raised: 105000,
-      deadline: "Jan 1, 2025",
+      deadline: "Jan 1, 2027",
       image: news2Image
     },
     {
@@ -56,7 +56,7 @@ export default function Campaigns() {
       category: "Hockey" as const,
       goal: 15000,
       raised: 2500,
-      deadline: "Sep 30, 2024",
+      deadline: "Sep 30, 2026",
       image: teamImage
     },
     {
@@ -66,7 +66,7 @@ export default function Campaigns() {
       category: "Health" as const,
       goal: 40000,
       raised: 18000,
-      deadline: "May 1, 2025",
+      deadline: "May 1, 2027",
       image: news1Image
     }
   ];

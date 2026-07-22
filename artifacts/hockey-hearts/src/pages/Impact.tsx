@@ -26,7 +26,7 @@ export default function Impact() {
             Numbers tell a story, but the real impact is measured in smiles, healthy checkups, and goals scored.
           </p>
           <Button size="lg" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 font-semibold rounded-full px-8">
-            <Download className="mr-2 h-5 w-5" /> Download 2023 Annual Report
+            <Download className="mr-2 h-5 w-5" /> Download 2025 Annual Report
           </Button>
         </div>
       </section>

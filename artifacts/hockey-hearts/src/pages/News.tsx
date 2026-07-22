@@ -10,7 +10,7 @@ export default function News() {
     {
       id: "street-hockey-success",
       title: "Summer Street Hockey Program Reaches New Heights",
-      date: "August 15, 2024",
+      date: "July 10, 2026",
       category: "Program Update",
       excerpt: "Over 1,200 kids participated in our free summer street hockey camps across five cities, breaking previous attendance records and bringing communities together.",
       image: news1Image
@@ -18,7 +18,7 @@ export default function News() {
     {
       id: "hospital-partnership",
       title: "New Partnership with Children's Memorial",
-      date: "July 28, 2024",
+      date: "June 25, 2026",
       category: "Health Initiative",
       excerpt: "We are thrilled to announce a $100,000 commitment to the new pediatric oncology playroom at Children's Memorial Hospital, providing interactive spaces for recovering patients.",
       image: news2Image
@@ -26,7 +26,7 @@ export default function News() {
     {
       id: "annual-gala-results",
       title: "Winter Gala Raises $500K for Equipment Grants",
-      date: "June 10, 2024",
+      date: "May 18, 2026",
       category: "Event",
       excerpt: "Thanks to our generous donors, this year's Winter Gala exceeded all expectations. The funds will directly purchase 1,000 sets of gear for the upcoming season.",
       image: camp1Image
@@ -34,7 +34,7 @@ export default function News() {
     {
       id: "mobile-clinic-fleet",
       title: "Expanding the Mobile Clinic Fleet",
-      date: "May 5, 2024",
+      date: "April 3, 2026",
       category: "Health Initiative",
       excerpt: "With the addition of two new customized RVs, our mobile pediatric screening units can now reach rural counties that lack dedicated pediatricians.",
       image: camp2Image
@@ -42,7 +42,7 @@ export default function News() {
     {
       id: "coach-of-the-year",
       title: "Volunteer Coach of the Year: Michael T.",
-      date: "April 12, 2024",
+      date: "March 15, 2026",
       category: "Community",
       excerpt: "Michael has dedicated over 400 hours this season alone to coaching our inner-city youth league, ensuring every player feels valued and supported.",
       image: news1Image
@@ -50,7 +50,7 @@ export default function News() {
     {
       id: "nutrition-guide",
       title: "Launch of the 'Fuel for the Ice' Nutrition Guide",
-      date: "March 20, 2024",
+      date: "February 8, 2026",
       category: "Education",
       excerpt: "We've partnered with sports nutritionists to create a free, accessible guide for families to help their young athletes eat healthy on a budget.",
       image: news2Image

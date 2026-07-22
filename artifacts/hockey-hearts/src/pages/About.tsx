@@ -30,7 +30,7 @@ export default function About() {
     { year: "2010", text: "Founded by a coalition of former pro players and pediatricians." },
     { year: "2014", text: "Reached $1 Million in cumulative equipment grants." },
     { year: "2018", text: "Launched the first Mobile Pediatric Clinic initiative." },
-    { year: "2023", text: "Expanded operations nationwide, supporting over 15,000 children annually." }
+    { year: "2026", text: "Expanded operations nationwide, supporting over 15,000 children annually." }
   ];
 
   return (
