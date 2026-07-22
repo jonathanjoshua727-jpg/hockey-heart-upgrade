@@ -95,6 +95,38 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Ambassadors */}
+      <section className="py-20 md:py-28 bg-primary text-primary-foreground">
+        <div className="container mx-auto px-4 lg:px-8">
+          <div className="text-center mb-14">
+            <p className="text-secondary font-semibold uppercase tracking-widest text-sm mb-3">Proud Supporters</p>
+            <h2 className="font-serif text-3xl md:text-4xl font-bold mb-4">Our Player Ambassadors</h2>
+            <p className="text-primary-foreground/70 text-lg max-w-2xl mx-auto">
+              These professional players know the game changed their lives. Now they're making sure it can change yours.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
+            {[
+              { name: "Andrei Schvenikov", role: "Center / Lead Ambassador", number: "#17" },
+              { name: "Marcus Kowalczyk", role: "Defenseman", number: "#4" },
+              { name: "Tyler Oduya", role: "Right Wing", number: "#21" },
+              { name: "Viktor Petrov", role: "Goaltender", number: "#31" },
+            ].map((player) => (
+              <div key={player.name} className="text-center group">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-secondary/20 border-2 border-secondary/40 flex items-center justify-center group-hover:border-secondary transition-colors">
+                  <span className="font-serif text-2xl font-bold text-secondary">{player.number}</span>
+                </div>
+                <p className="font-bold text-sm">{player.name}</p>
+                <p className="text-primary-foreground/60 text-xs mt-1">{player.role}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-center mt-10 text-primary-foreground/50 text-sm italic">
+            "Hockey gave us everything. This is how we give back." — Andrei Schvenikov
+          </p>
+        </div>
+      </section>
+
       {/* Featured Campaigns */}
       <section className="py-20 bg-muted/30">
         <div className="container mx-auto px-4 lg:px-8">

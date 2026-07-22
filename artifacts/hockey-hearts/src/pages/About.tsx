@@ -87,6 +87,56 @@ export default function About() {
         </div>
       </section>
 
+      {/* Player Ambassadors */}
+      <section className="py-20 bg-primary text-primary-foreground">
+        <div className="container mx-auto px-4 lg:px-8">
+          <div className="text-center mb-14">
+            <p className="text-secondary font-semibold uppercase tracking-widest text-sm mb-3">On the Ice & Off It</p>
+            <h2 className="font-serif text-3xl md:text-4xl font-bold mb-4">Player Ambassadors</h2>
+            <p className="text-primary-foreground/70 text-lg max-w-2xl mx-auto">
+              These professional athletes lend their voices, time, and resources to champion our mission every season.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-5xl mx-auto">
+            {[
+              {
+                name: "Andrei Schvenikov",
+                number: "#17",
+                role: "Center / Lead Ambassador",
+                bio: "A two-time All-Star and founding ambassador of Hockey Hearts. Andrei grew up in a low-income household and credits a local equipment grant for starting his career. He has personally donated over $200,000 to our gear fund.",
+              },
+              {
+                name: "Marcus Kowalczyk",
+                number: "#4",
+                role: "Defenseman",
+                bio: "Marcus runs our annual off-season skate clinic for kids ages 6–12, donating his time every July. His partnership helped us reach three new communities in 2025.",
+              },
+              {
+                name: "Tyler Oduya",
+                number: "#21",
+                role: "Right Wing",
+                bio: "Tyler champions our children's health programs, having volunteered at over 30 mobile clinic events. He advocates for pediatric health access at every public appearance.",
+              },
+              {
+                name: "Viktor Petrov",
+                number: "#31",
+                role: "Goaltender",
+                bio: "Viktor co-hosts our annual Winter Gala, which has raised over $1.2 million since 2019. Off the ice, he mentors youth coaches through our certification grant program.",
+              },
+            ].map((player) => (
+              <div key={player.name} className="bg-white/5 border border-white/10 rounded-3xl p-8 flex flex-col items-center text-center hover:bg-white/10 transition-colors">
+                <div className="w-16 h-16 rounded-full bg-secondary/20 border-2 border-secondary/50 flex items-center justify-center mb-5">
+                  <span className="font-serif text-xl font-bold text-secondary">{player.number}</span>
+                </div>
+                <h3 className="font-bold text-lg mb-1">{player.name}</h3>
+                <p className="text-secondary text-xs font-semibold uppercase tracking-wider mb-4">{player.role}</p>
+                <p className="text-primary-foreground/65 text-sm leading-relaxed">{player.bio}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Timeline */}
       <section className="py-20 md:py-32">
         <div className="container mx-auto px-4 lg:px-8 max-w-4xl">

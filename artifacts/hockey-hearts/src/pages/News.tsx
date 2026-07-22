@@ -40,19 +40,19 @@ export default function News() {
       image: camp2Image
     },
     {
-      id: "coach-of-the-year",
-      title: "Volunteer Coach of the Year: Michael T.",
+      id: "schvenikov-ambassador",
+      title: "Andrei Schvenikov Named Lead Ambassador of Hockey Hearts",
       date: "March 15, 2026",
-      category: "Community",
-      excerpt: "Michael has dedicated over 400 hours this season alone to coaching our inner-city youth league, ensuring every player feels valued and supported.",
+      category: "Ambassador",
+      excerpt: "All-Star center Andrei Schvenikov has officially joined as our Lead Ambassador, pledging a personal $200,000 donation to the equipment grant fund and committing to three seasons of active advocacy.",
       image: news1Image
     },
     {
-      id: "nutrition-guide",
-      title: "Launch of the 'Fuel for the Ice' Nutrition Guide",
+      id: "oduya-clinic",
+      title: "Tyler Oduya Joins 30th Mobile Clinic as Volunteer",
       date: "February 8, 2026",
-      category: "Education",
-      excerpt: "We've partnered with sports nutritionists to create a free, accessible guide for families to help their young athletes eat healthy on a budget.",
+      category: "Health Initiative",
+      excerpt: "Right wing Tyler Oduya showed up — skates and all — to our 30th mobile pediatric screening event, drawing record attendance and helping provide free health checks to over 400 children.",
       image: news2Image
     }
   ];

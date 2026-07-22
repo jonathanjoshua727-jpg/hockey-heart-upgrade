@@ -7,12 +7,20 @@ import heroImage from "@assets/hero-hockey.jpg";
 export default function Impact() {
   const stories = [
     {
-      quote: "Before the grant, we thought Marcus would have to quit. The gear is just too expensive. Now, he's the captain of his bantam team and his grades have improved drastically because he wants to stay on the ice.",
+      quote: "I grew up without the money for equipment. A grant from an organization just like this one put me on the ice for the first time. Hockey Hearts is doing exactly what needs to be done — removing every barrier standing between a kid and their potential.",
+      author: "Andrei Schvenikov, All-Star Center & Lead Ambassador"
+    },
+    {
+      quote: "Before the grant, we thought our son would have to quit. The gear is just too expensive. Now, he's the captain of his bantam team and his grades have improved because he wants to stay on the ice.",
       author: "Sarah J., Mother of a grant recipient"
     },
     {
       quote: "The mobile clinic found an irregular heart murmur during a routine pre-season screening. Because they caught it early, we were able to treat it before it became a crisis. They literally saved my son's life.",
       author: "David L., Parent"
+    },
+    {
+      quote: "At every clinic event I've attended, I see the same thing — kids who just needed someone to show up for them. That's what we're doing. I'll keep showing up as long as they need us.",
+      author: "Tyler Oduya, Right Wing & Health Advocate"
     }
   ];
 
@@ -49,7 +57,7 @@ export default function Impact() {
       <section className="py-20 md:py-32 bg-muted/30">
         <div className="container mx-auto px-4 lg:px-8 text-center">
           <h2 className="font-serif text-3xl md:text-4xl font-bold text-primary mb-16">Stories from the Community</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-6xl mx-auto">
             {stories.map((story, idx) => (
               <div key={idx} className="bg-card p-10 rounded-3xl shadow-sm relative">
                 <div className="absolute -top-6 left-10 text-6xl text-secondary/40 font-serif leading-none">"</div>
