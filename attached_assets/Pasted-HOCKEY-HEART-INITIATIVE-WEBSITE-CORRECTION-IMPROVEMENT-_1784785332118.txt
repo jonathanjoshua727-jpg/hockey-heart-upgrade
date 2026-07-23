@@ -1,0 +1,335 @@
+HOCKEY HEART INITIATIVE WEBSITE — CORRECTION, IMPROVEMENT & COMPLETION PROMPT
+
+Please review the existing Hockey Heart Initiative website and make the following corrections, improvements, and upgrades.
+
+Do not completely rebuild the website unless a section is impossible to fix. Preserve the existing design, structure, and useful features while improving the quality, functionality, security, and professionalism.
+
+Before making major changes, first analyze the current website and provide a technical improvement plan explaining:
+
+- Current issues found
+- Required fixes
+- Database changes needed
+- Payment integration improvements
+- Security improvements
+- Admin dashboard improvements
+- Recommended implementation steps
+
+After the review, apply the approved corrections.
+
+==================================================
+1. ORGANIZATION INFORMATION CORRECTIONS
+==================================================
+
+Update the website with the correct official information:
+
+Organization Name:
+
+Hockey Heart Initiative
+
+Official Email:
+
+contacthockeyheartinitiative@gmail.com
+
+Mailing Address:
+
+Coming Soon
+
+Country:
+
+USA
+
+Do not make the country a major visible focus on the website. Keep the website focused on the mission, hockey community impact, and supporters worldwide.
+
+==================================================
+2. WEBSITE FUNCTIONALITY CORRECTIONS
+==================================================
+
+Perform a full inspection of the existing website.
+
+Fix all:
+
+- Broken buttons
+- Non-working links
+- Empty sections
+- Placeholder features
+- Incorrect redirects
+- Mobile issues
+- Layout problems
+- Missing functionality
+
+Every button should perform its intended action.
+
+For unfinished features, replace inactive behavior with a professional message such as:
+
+"Coming Soon"
+
+or
+
+"This feature is currently being configured."
+
+==================================================
+3. CONTENT AND NAME CORRECTIONS
+==================================================
+
+Perform a complete content review.
+
+Correct:
+
+- Grammar mistakes
+- Spelling errors
+- Formatting issues
+- Incorrect information
+
+Important correction:
+
+The correct name is:
+
+Andrei Svechnikov
+
+Replace any incorrect spelling such as:
+
+Andrei Schvenikov
+
+Check and update this everywhere including:
+
+- Website pages
+- Daily updates
+- Headings
+- Cards
+- Metadata
+- SEO information
+- Hidden content
+
+==================================================
+4. DONATION SYSTEM CORRECTIONS
+==================================================
+
+The current Donate Now button and donation flow are incomplete.
+
+Fix and complete the donation process.
+
+Current problem:
+
+After selecting a donation amount, the donation button does not continue correctly.
+
+Correct flow:
+
+1. User clicks Donate Now.
+2. User selects donation amount.
+3. User selects payment method.
+4. User completes payment.
+5. User receives a professional thank-you confirmation page.
+6. Donation is recorded in the admin dashboard.
+7. Email confirmation is sent if the donor provides an email.
+
+Minimum donation amount:
+
+$50
+
+Suggested amounts:
+
+$50
+$100
+$250
+$500
+$1,000
+
+Custom amount option should also exist.
+
+==================================================
+5. PAYMENT SYSTEM CORRECTION
+==================================================
+
+Replace the previous payment plan with Paystack integration.
+
+Use Paystack as the payment processor.
+
+Paystack should work quietly behind the scenes.
+
+Do not make Paystack the focus of the public donation experience.
+
+The public donation page should only show:
+
+- Bank Transfer (Recommended)
+- Credit / Debit Card
+- Cryptocurrency
+
+Do not display:
+
+"Paystack Donation"
+
+unless required by Paystack during checkout.
+
+The donor experience should feel like they are donating directly to Hockey Heart Initiative.
+
+Create secure payment settings in the Admin Dashboard where the administrator can add:
+
+- Paystack Public Key
+- Paystack Secret Key
+- Webhook Secret
+- Test Mode
+- Live Mode
+
+Never expose secret keys in the frontend.
+
+==================================================
+6. CRYPTOCURRENCY DONATION CORRECTION
+==================================================
+
+Keep cryptocurrency as an additional payment method.
+
+Support:
+
+- Bitcoin
+- Ethereum
+- USDT TRC20
+- USDT ERC20
+- Solana (optional)
+
+Admin should be able to update:
+
+- Wallet addresses
+- Supported cryptocurrencies
+- Enable/disable crypto payments
+
+Only public wallet addresses should be stored.
+
+Never store private keys.
+
+==================================================
+7. CONTACT PAGE CORRECTION
+==================================================
+
+Remove:
+
+- Instagram icon
+- Facebook icon
+- Twitter/X icon
+- Social media links
+- Social sharing buttons
+
+The contact section should only contain:
+
+Email:
+
+contacthockeyheartinitiative@gmail.com
+
+Mailing Address:
+
+Coming Soon
+
+The contact form should only request:
+
+- Email
+
+==================================================
+8. REMOVE UNNECESSARY SECTIONS
+==================================================
+
+Remove completely:
+
+- Registration Assistance
+- Emergency Assistance for Hockey Families
+
+Replace donation causes with:
+
+- Youth Hockey Development
+- Community Hockey Programs
+- Equipment & Gear
+- Ice Time & Training Support
+- Community Outreach
+- Hockey Education
+
+==================================================
+9. ADMIN DASHBOARD IMPROVEMENT
+==================================================
+
+Upgrade the administrator dashboard.
+
+The admin should be able to manage the entire website without editing code.
+
+Add management controls for:
+
+Website Content:
+- Homepage
+- About page
+- Mission
+- Vision
+- FAQ
+- Contact page
+- Images
+- Videos
+- Logos
+- Banners
+
+Donation Management:
+- Add new donation causes
+- Edit donation causes
+- Remove donation causes
+- Create campaigns
+- Set donation goals
+- Feature campaigns
+- Disable campaigns
+
+Payment Management:
+- Manage Paystack settings
+- Manage cryptocurrency wallet addresses
+- View transactions
+- View payment status
+- Export reports
+
+Daily Updates:
+- Create updates
+- Edit updates
+- Delete updates
+- Schedule updates
+- Feature updates
+
+Analytics:
+- Total donations
+- Donation history
+- Payment methods
+- Visitor statistics
+- Campaign performance
+
+Security:
+- Admin login
+- Roles and permissions
+- Password reset
+- Audit logs
+- Backup options
+
+==================================================
+10. DAILY UPDATE CORRECTION
+==================================================
+
+The Daily Updates section is currently not functioning correctly.
+
+Fix the system.
+
+If updates cannot load, display:
+
+"Daily updates are temporarily unavailable while this feature is being configured."
+
+Do not leave the section blank.
+
+==================================================
+11. FINAL QUALITY CHECK
+==================================================
+
+After completing all corrections:
+
+Check:
+
+- Mobile responsiveness
+- Website speed
+- Security
+- Accessibility
+- Navigation
+- Payment flow
+- Admin dashboard
+- Content accuracy
+
+The final result should be a polished, trustworthy, professional Hockey Heart Initiative website ready for future growth.
+
+The system should be scalable and easy to update without requiring a developer for normal website management.

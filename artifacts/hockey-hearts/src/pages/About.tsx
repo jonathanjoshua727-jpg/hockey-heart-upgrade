@@ -55,7 +55,7 @@ export default function About() {
                 In 2010, a group of pediatricians and former professional hockey players noticed a stark reality: the children who needed the discipline, community, and joy of team sports the most were often the ones who lacked the health foundation or financial means to participate.
               </p>
               <p className="text-lg text-muted-foreground leading-relaxed">
-                Hockey Hearts Initiative was created to address both sides of this equation. We don't just hand out skates; we ensure kids are healthy enough to wear them. We don't just fund hospital playrooms; we give patients a goal to strive for once they recover.
+                Hockey Heart Initiative was created to address both sides of this equation. We don't just hand out skates; we ensure kids are healthy enough to wear them. We don't just fund hospital playrooms; we give patients a goal to strive for once they recover.
               </p>
             </div>
             <div className="relative h-[400px] md:h-[500px] rounded-3xl overflow-hidden shadow-xl">
@@ -100,10 +100,10 @@ export default function About() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-5xl mx-auto">
             {[
               {
-                name: "Andrei Schvenikov",
+                name: "Andrei Svechnikov",
                 number: "#17",
                 role: "Center / Lead Ambassador",
-                bio: "A two-time All-Star and founding ambassador of Hockey Hearts. Andrei grew up in a low-income household and credits a local equipment grant for starting his career. He has personally donated over $200,000 to our gear fund.",
+                bio: "A two-time NHL All-Star and founding ambassador of Hockey Heart Initiative. Andrei grew up in a low-income household and credits a local equipment grant for starting his career. He has personally donated over $200,000 to our gear fund.",
               },
               {
                 name: "Marcus Kowalczyk",

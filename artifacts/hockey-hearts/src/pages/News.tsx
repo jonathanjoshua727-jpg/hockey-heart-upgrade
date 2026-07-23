@@ -40,11 +40,11 @@ export default function News() {
       image: camp2Image
     },
     {
-      id: "schvenikov-ambassador",
-      title: "Andrei Schvenikov Named Lead Ambassador of Hockey Hearts",
+      id: "svechnikov-ambassador",
+      title: "Andrei Svechnikov Named Lead Ambassador of Hockey Heart Initiative",
       date: "March 15, 2026",
       category: "Ambassador",
-      excerpt: "All-Star center Andrei Schvenikov has officially joined as our Lead Ambassador, pledging a personal $200,000 donation to the equipment grant fund and committing to three seasons of active advocacy.",
+      excerpt: "NHL All-Star Andrei Svechnikov has officially joined as our Lead Ambassador, pledging a personal $200,000 donation to the equipment grant fund and committing to three seasons of active advocacy.",
       image: news1Image
     },
     {
@@ -63,7 +63,7 @@ export default function News() {
         <div className="container mx-auto px-4 max-w-3xl">
           <h1 className="font-serif text-4xl md:text-5xl font-bold mb-6">News & Updates</h1>
           <p className="text-xl text-primary-foreground/80">
-            Read the latest stories of impact, program updates, and announcements from the Hockey Hearts Initiative.
+            Read the latest stories of impact, program updates, and announcements from the Hockey Heart Initiative.
           </p>
         </div>
       </section>

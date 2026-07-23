@@ -7,8 +7,8 @@ import heroImage from "@assets/hero-hockey.jpg";
 export default function Impact() {
   const stories = [
     {
-      quote: "I grew up without the money for equipment. A grant from an organization just like this one put me on the ice for the first time. Hockey Hearts is doing exactly what needs to be done — removing every barrier standing between a kid and their potential.",
-      author: "Andrei Schvenikov, All-Star Center & Lead Ambassador"
+      quote: "I grew up without the money for equipment. A grant from an organization just like this one put me on the ice for the first time. Hockey Heart Initiative is doing exactly what needs to be done — removing every barrier standing between a kid and their potential.",
+      author: "Andrei Svechnikov, NHL All-Star & Lead Ambassador"
     },
     {
       quote: "Before the grant, we thought our son would have to quit. The gear is just too expensive. Now, he's the captain of his bantam team and his grades have improved because he wants to stay on the ice.",

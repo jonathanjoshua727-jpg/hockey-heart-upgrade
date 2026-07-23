@@ -81,7 +81,7 @@ export default function Home() {
             We believe every child deserves a fair shot—on the ice and in life.
           </h2>
           <p className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-12">
-            The Hockey Hearts Initiative bridges the gap between athletic development and fundamental well-being. By funding youth hockey programs and supporting vital children's health initiatives, we are building a stronger, healthier future for our communities.
+            The Hockey Heart Initiative bridges the gap between athletic development and fundamental well-being. By funding youth hockey programs and supporting vital children's health initiatives, we are building a stronger, healthier future for our communities.
           </p>
           <Link 
             href="/mission"
@@ -107,7 +107,7 @@ export default function Home() {
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
             {[
-              { name: "Andrei Schvenikov", role: "Center / Lead Ambassador", number: "#17" },
+              { name: "Andrei Svechnikov", role: "Center / Lead Ambassador", number: "#37" },
               { name: "Marcus Kowalczyk", role: "Defenseman", number: "#4" },
               { name: "Tyler Oduya", role: "Right Wing", number: "#21" },
               { name: "Viktor Petrov", role: "Goaltender", number: "#31" },
@@ -122,7 +122,7 @@ export default function Home() {
             ))}
           </div>
           <p className="text-center mt-10 text-primary-foreground/50 text-sm italic">
-            "Hockey gave us everything. This is how we give back." — Andrei Schvenikov
+            "Hockey gave us everything. This is how we give back." — Andrei Svechnikov
           </p>
         </div>
       </section>

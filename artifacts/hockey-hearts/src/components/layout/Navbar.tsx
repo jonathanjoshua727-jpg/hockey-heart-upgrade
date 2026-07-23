@@ -26,7 +26,7 @@ export function Navbar() {
               <CircleDot className="h-6 w-6" />
             </div>
             <span className="font-serif font-bold text-xl text-primary tracking-tight">
-              Hockey Hearts
+              Hockey Heart Initiative
             </span>
           </Link>
 

@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
-const PRESET_AMOUNTS = [25, 50, 100, 250];
+const PRESET_AMOUNTS = [50, 100, 250, 500, 1000];
 
 export function DonationForm() {
   const [amount, setAmount] = useState<number | "custom">(50);
@@ -58,11 +58,14 @@ export function DonationForm() {
       {/* Cause Selection */}
       <div className="space-y-4">
         <h3 className="font-serif text-2xl font-bold text-primary">Designate Your Gift</h3>
-        <RadioGroup value={cause} onValueChange={setCause} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <RadioGroup value={cause} onValueChange={setCause} className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {[
-            { id: "general", label: "General Need" },
-            { id: "hockey", label: "Youth Hockey" },
-            { id: "health", label: "Children's Health" }
+            { id: "general", label: "General Fund" },
+            { id: "youth-hockey", label: "Youth Hockey Development" },
+            { id: "community", label: "Community Hockey Programs" },
+            { id: "equipment", label: "Equipment & Gear" },
+            { id: "ice-time", label: "Ice Time & Training" },
+            { id: "outreach", label: "Community Outreach" },
           ].map((c) => (
             <div key={c.id}>
               <RadioGroupItem value={c.id} id={c.id} className="peer sr-only" />
@@ -105,6 +108,33 @@ export function DonationForm() {
       </div>
 
       {/* Submit Button */}
+      {/* Payment Method */}
+      <div className="space-y-4">
+        <h3 className="font-serif text-2xl font-bold text-primary">Payment Method</h3>
+        <div className="grid grid-cols-1 gap-3">
+          {[
+            { id: "bank", label: "Bank Transfer", tag: "Recommended" },
+            { id: "card", label: "Credit / Debit Card", tag: "" },
+            { id: "crypto", label: "Cryptocurrency", tag: "" },
+          ].map((m) => (
+            <div key={m.id} className="flex items-center justify-between p-4 border border-primary/20 rounded-xl bg-muted/30">
+              <span className="font-medium text-primary">{m.label}</span>
+              <span className="text-xs text-muted-foreground italic">
+                {m.tag ? <span className="bg-secondary/20 text-secondary-foreground px-2 py-0.5 rounded-full font-semibold mr-2">{m.tag}</span> : null}
+                Being configured
+              </span>
+            </div>
+          ))}
+        </div>
+        <p className="text-sm text-muted-foreground italic">
+          Payment processing is currently being configured. Please contact us at{" "}
+          <a href="mailto:contacthockeyheartinitiative@gmail.com" className="text-primary underline">
+            contacthockeyheartinitiative@gmail.com
+          </a>{" "}
+          to complete your donation.
+        </p>
+      </div>
+
       <Button size="lg" className="w-full h-16 text-xl rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-md">
         Donate ${amount === "custom" ? (customAmount || "0") : amount} Now
       </Button>
@@ -117,7 +147,7 @@ export function DonationForm() {
           Secure payment processing
         </p>
         <p className="text-xs text-muted-foreground">
-          Hockey Hearts Initiative is a 501(c)(3) tax-exempt organization.
+          Hockey Heart Initiative is a 501(c)(3) tax-exempt organization.
         </p>
       </div>
     </form>

@@ -60,8 +60,8 @@ export default function Mission() {
                     <div className="w-2 h-2 rounded-full bg-primary" />
                   </div>
                   <div>
-                    <strong className="text-foreground block text-lg">Registration Assistance</strong>
-                    <span className="text-muted-foreground">Covering league fees so families never have to choose between necessities and their child's passion.</span>
+                    <strong className="text-foreground block text-lg">Community Hockey Programs</strong>
+                    <span className="text-muted-foreground">Funding structured youth leagues and coaching programs in underserved communities so families never have to choose between necessities and their child's passion.</span>
                   </div>
                 </li>
                 <li className="flex items-start gap-4">
@@ -69,8 +69,8 @@ export default function Mission() {
                     <div className="w-2 h-2 rounded-full bg-primary" />
                   </div>
                   <div>
-                    <strong className="text-foreground block text-lg">Ice Time Access</strong>
-                    <span className="text-muted-foreground">Subsidizing rink costs for local leagues facing budget constraints or facility closures.</span>
+                    <strong className="text-foreground block text-lg">Ice Time & Training Support</strong>
+                    <span className="text-muted-foreground">Subsidizing rink costs and certified coaching for local leagues facing budget constraints or facility closures.</span>
                   </div>
                 </li>
               </ul>

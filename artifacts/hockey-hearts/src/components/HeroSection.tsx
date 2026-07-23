@@ -15,7 +15,7 @@ export function HeroSection({ image, heading, subheading }: HeroSectionProps) {
       <div className="absolute inset-0 z-0">
         <img 
           src={image} 
-          alt="Hockey Hearts Hero" 
+          alt="Hockey Heart Initiative Hero" 
           className="w-full h-full object-cover object-center"
         />
         {/* Navy to ice blue gradient overlay */}
