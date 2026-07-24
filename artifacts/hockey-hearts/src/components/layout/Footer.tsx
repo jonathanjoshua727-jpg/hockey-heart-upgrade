@@ -38,6 +38,9 @@ export function Footer() {
                 <Link href="/mission" className="text-primary-foreground/70 hover:text-white transition-colors text-sm">Our Mission</Link>
               </li>
               <li>
+                <Link href="/vision" className="text-primary-foreground/70 hover:text-white transition-colors text-sm">Our Vision</Link>
+              </li>
+              <li>
                 <Link href="/campaigns" className="text-primary-foreground/70 hover:text-white transition-colors text-sm">Current Campaigns</Link>
               </li>
               <li>
@@ -63,6 +66,9 @@ export function Footer() {
               </li>
               <li>
                 <Link href="/contact" className="text-primary-foreground/70 hover:text-white transition-colors text-sm">Contact Us</Link>
+              </li>
+              <li>
+                <Link href="/faq" className="text-primary-foreground/70 hover:text-white transition-colors text-sm">FAQ</Link>
               </li>
             </ul>
           </div>
@@ -91,8 +97,8 @@ export function Footer() {
             © {new Date().getFullYear()} Hockey Heart Initiative. A 501(c)(3) nonprofit organization.
           </p>
           <div className="flex gap-6">
-            <button className="text-primary-foreground/50 hover:text-white text-sm transition-colors">Privacy Policy</button>
-            <button className="text-primary-foreground/50 hover:text-white text-sm transition-colors">Terms of Use</button>
+            <Link href="/privacy" className="text-primary-foreground/50 hover:text-white text-sm transition-colors">Privacy Policy</Link>
+            <Link href="/terms" className="text-primary-foreground/50 hover:text-white text-sm transition-colors">Terms of Use</Link>
           </div>
         </div>
       </div>
