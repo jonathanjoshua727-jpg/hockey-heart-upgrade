@@ -1,0 +1,291 @@
+==================================================
+COMPLETE WEBSITE ROUTING, PAGE FUNCTIONALITY & ADMIN DASHBOARD AUDIT
+==================================================
+
+Perform a complete audit of every page, route, button, link, feature, and management system across the entire Hockey Heart Initiative website.
+
+The current website contains routing issues where some pages or features may lead to:
+
+"404 Page Not Found — Did you forget to add the page to the router?"
+
+Fix this across the entire website.
+
+Do not only fix the News & Updates section. Apply this correction to every page, feature, and future content system.
+
+Check and repair:
+
+- Homepage
+- About page
+- Mission page
+- Vision page
+- Donation pages
+- Donation campaign pages
+- News & Updates pages
+- Program pages
+- Contact page
+- FAQ page
+- Privacy Policy page
+- Terms of Use page
+- Admin dashboard pages
+- User-facing forms
+- Dynamic content pages
+- Future website sections
+
+==================================================
+DYNAMIC PAGE ROUTING
+==================================================
+
+All dynamically created content must automatically generate a working page route.
+
+Examples:
+
+News articles:
+
+/news/[slug]
+
+Programs:
+
+/programs/[slug]
+
+Donation campaigns:
+
+/campaigns/[slug]
+
+Announcements:
+
+/announcements/[slug]
+
+Any future content type should follow the same dynamic routing structure.
+
+When the administrator publishes new content from the Admin Dashboard, the system must automatically:
+
+- Create a working URL
+- Display the content correctly
+- Generate SEO metadata
+- Make the page mobile responsive
+- Allow users to access the page without errors
+
+==================================================
+LINK AND BUTTON TESTING
+==================================================
+
+Test every:
+
+- Navigation link
+- Button
+- Call-to-action button
+- Card
+- Image link
+- Menu item
+- Footer link
+- Donation button
+- Form submission button
+
+Every element must lead to the correct destination.
+
+Remove all:
+
+- Broken links
+- Empty routes
+- Placeholder URLs
+- Inactive buttons
+- Unfinished redirects
+
+If a feature is not available yet, display:
+
+"Coming Soon"
+
+or
+
+"This feature is currently being configured."
+
+Never allow users to reach broken pages.
+
+==================================================
+CREATE A COMPLETE ADMINISTRATOR DASHBOARD
+==================================================
+
+Create a secure, professional Administrator Dashboard for Hockey Heart Initiative.
+
+The dashboard should allow the administrator to manage the entire website without editing code.
+
+The dashboard must include:
+
+==================================================
+ADMIN AUTHENTICATION & SECURITY
+==================================================
+
+Create secure administrator access.
+
+Include:
+
+- Admin login page
+- Secure password authentication
+- Password reset
+- Session management
+- Role-based permissions
+- Admin activity logs
+- Security monitoring
+- Two-factor authentication support
+- Backup and restore options
+
+Do not hard-code administrator passwords.
+
+==================================================
+CONTENT MANAGEMENT SYSTEM (CMS)
+==================================================
+
+The administrator should be able to manage all website content.
+
+Create management sections for:
+
+Homepage:
+
+- Hero section
+- Headlines
+- Images
+- Videos
+- Buttons
+- Featured campaigns
+
+Pages:
+
+- About
+- Mission
+- Vision
+- FAQ
+- Contact
+- Privacy Policy
+- Terms of Use
+
+Media:
+
+- Upload images
+- Upload videos
+- Replace logos
+- Manage banners
+- Manage website graphics
+
+==================================================
+NEWS & UPDATES MANAGEMENT
+==================================================
+
+The administrator should be able to:
+
+- Create updates
+- Edit updates
+- Delete updates
+- Draft updates
+- Publish updates
+- Schedule updates
+- Add categories
+- Add featured images
+- Pin important updates
+
+Every update created must automatically:
+
+- Appear on the News & Updates page
+- Generate a working URL
+- Have SEO information
+- Be mobile responsive
+
+==================================================
+DONATION CAMPAIGN MANAGEMENT
+==================================================
+
+The administrator should be able to create and manage donation opportunities.
+
+Include:
+
+- Add new donation causes
+- Edit donation causes
+- Remove donation causes
+- Create campaigns
+- Set fundraising goals
+- Update campaign descriptions
+- Upload campaign images
+- Feature campaigns
+- Disable campaigns
+
+Donation categories should be manageable from the dashboard.
+
+==================================================
+PAYMENT MANAGEMENT
+==================================================
+
+Create a secure payment management section.
+
+The administrator should be able to:
+
+- Configure Paystack
+- Add payment credentials securely
+- Enable or disable payment methods
+- Manage cryptocurrency wallet addresses
+- View transaction records
+- View payment status
+- Export payment reports
+
+Payment information should include:
+
+- Transaction ID
+- Amount
+- Currency
+- Payment method
+- Status
+- Date
+- Donor email (if provided)
+
+Never store card details.
+
+==================================================
+ANALYTICS DASHBOARD
+==================================================
+
+Include website analytics:
+
+- Total visitors
+- Donation conversions
+- Total donations
+- Monthly donations
+- Popular donation causes
+- Payment methods used
+- User activity
+- Campaign performance
+
+==================================================
+ADMIN DASHBOARD USER EXPERIENCE
+==================================================
+
+The dashboard should be:
+
+- Clean
+- Modern
+- Easy to understand
+- Mobile responsive
+- Fast
+
+Use clear navigation sections.
+
+The administrator should be able to update the website, manage donations, publish content, and monitor activity without needing a developer.
+
+==================================================
+ERROR HANDLING
+==================================================
+
+Create a professional website-wide 404 page.
+
+If a user enters an incorrect or unavailable URL, display:
+
+- Clear "Page Not Found" message
+- Button back to Homepage
+- Button back to previous section
+
+The final website should have:
+
+- No broken routes
+- No unfinished pages
+- No inactive buttons
+- A fully functional Admin Dashboard
+- A scalable CMS system
+
+The final result should function like a professional nonprofit platform.

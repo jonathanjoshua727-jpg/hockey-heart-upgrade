@@ -1,0 +1,163 @@
+Continue from the current project state. The Hockey Heart Initiative website is largely complete.
+
+Do NOT redesign, recreate, overwrite, or replace the existing website. Preserve the current design, branding, layout, routing, and completed functionality.
+
+Your task is to complete every remaining production issue before publication.
+
+1. Eliminate Every 404 Error
+
+Perform a complete routing audit.
+
+Fix every page, route, button, navigation link, CTA, footer link, image link, and redirect.
+
+There must be:
+
+* No 404 pages
+* No broken links
+* No missing routes
+* No dead pages
+* No routing loops
+
+If one page links to another page, verify that the destination page exists and works correctly.
+
+2. Complete the Admin Dashboard
+
+Finish the Admin Dashboard so administrators can manage the entire website without modifying code.
+
+Include fully working management for:
+
+* Dashboard Overview
+* Donations
+* Donation Categories/Causes
+* Campaigns
+* Programs
+* News
+* Homepage Content
+* Pages
+* Gallery
+* Images
+* Testimonials
+* FAQs
+* Contact Information
+* Settings
+* Users
+* Analytics
+
+3. Dynamic Content Management
+
+Administrators must be able to:
+
+* Add News
+* Edit News
+* Delete News
+* Add Campaigns
+* Edit Campaigns
+* Delete Campaigns
+* Add Donation Causes
+* Edit Donation Causes
+* Delete Donation Causes
+* Add Programs
+* Edit Programs
+* Delete Programs
+* Upload Images
+* Replace Images
+* Delete Images
+* Edit Homepage Sections
+* Change banners
+* Change hero images
+* Change featured images
+
+Changes should immediately appear throughout the website.
+
+4. Donation System
+
+Keep the public payment methods exactly as:
+
+* Credit/Debit Card
+* Bank Transfer
+* Cryptocurrency
+
+Do NOT display Paystack anywhere.
+
+Paystack must remain completely hidden and only serve as the backend processor for:
+
+* Credit/Debit Card
+* Bank Transfer
+
+Cryptocurrency must remain independent.
+
+Fix every localhost redirect.
+
+Configure callback URLs, success URLs, and payment redirects correctly.
+
+Verify donations are recorded correctly in the Admin Dashboard.
+
+5. Image Management
+
+Allow administrators to:
+
+* Upload new images
+* Replace existing images
+* Delete images
+
+for every page including:
+
+* Homepage
+* About
+* Campaigns
+* Programs
+* News
+* Donate
+* Contact
+
+6. News System
+
+Create a fully functional News Management system.
+
+Administrators should be able to:
+
+* Create articles
+* Upload featured images
+* Publish
+* Save drafts
+* Edit
+* Delete
+
+Display news automatically on the News page.
+
+7. Final Website Audit
+
+Perform a complete end-to-end audit.
+
+Verify:
+
+* Every page loads
+* Every button works
+* Every route works
+* Every API endpoint responds
+* Every form submits
+* Every image loads
+* Every donation works
+* Every admin feature works
+* Every database operation succeeds
+* Every responsive layout works
+
+Automatically fix every issue found.
+
+8. Final Verification
+
+Do not stop after fixing individual issues.
+
+Continue testing, validating, and correcting the project until there are:
+
+* Zero 404 pages
+* Zero broken links
+* Zero placeholder pages
+* Zero dead routes
+* Zero localhost redirects
+* Zero TypeScript errors
+* Zero build errors
+* Zero runtime errors
+* Zero failed API endpoints
+
+The Hockey Heart Initiative website should be fully production-ready and publishable while preserving the current design and functionality.
