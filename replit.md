@@ -1,44 +1,57 @@
-# [Project name]
+# Hockey Heart Initiative
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A nonprofit website for the Hockey Heart Initiative — empowering youth through hockey and championing their right to health and opportunity. Includes a public-facing multi-page site and a full admin dashboard for content, donation, and campaign management.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/hockey-hearts run dev` — run the frontend site (reads `PORT` env var)
+- `pnpm --filter @workspace/api-server run dev` — run the API server (requires `DATABASE_URL`)
 - `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
 
 ## Stack
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- pnpm workspaces, Node.js 20, TypeScript
+- Frontend: React + Vite + Tailwind CSS + Wouter routing
+- Admin auth: SHA-256 hashed credentials in localStorage (`src/lib/adminAuth.ts`)
+- Data persistence: `localStorage` via `src/lib/contentStore.ts` — no backend calls from frontend
+- API: Express 5 (currently health-check only; `DATABASE_URL` required to start)
+- DB: PostgreSQL + Drizzle ORM (`lib/db`) — schema defined, not yet used by frontend
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/hockey-hearts/src/` — React frontend
+  - `src/lib/contentStore.ts` — all data (campaigns, news, donations, FAQs, settings, etc.) stored in localStorage
+  - `src/lib/adminAuth.ts` — admin authentication
+  - `src/lib/imageRegistry.ts` — maps image keys to asset URLs
+  - `src/pages/admin/` — admin dashboard and all section components
+  - `src/pages/admin/sections/` — individual admin sections (Donations, Campaigns, News, FAQs, etc.)
+  - `src/components/DonationForm.tsx` — full payment flow (Bank Transfer / Card / Crypto)
+- `artifacts/api-server/` — Express API (health check; DB-backed features pending)
+- `lib/db/` — Drizzle schema and migrations
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- **All data in localStorage**: No backend API calls from the frontend. All content (campaigns, news, FAQs, settings, etc.) lives in `localStorage` via `contentStore.ts`. This makes the site zero-dependency to deploy but limits to single-browser persistence.
+- **Payment methods**: Donation form supports Bank Transfer, Credit/Debit Card (via Paystack — never surfaced as "Paystack" on the public site), and Cryptocurrency. The name "Paystack" only appears in admin settings.
+- **Admin auth**: SHA-256 password hashing in localStorage. Sessions stored in sessionStorage with 8-hour expiry.
+- **Image handling**: `imageRegistry.ts` maps string keys to Vite-processed URLs; `resolveImage()` handles keys, absolute URLs, and base64 blobs.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Public site: Home, About, Mission, Vision, Campaigns (with detail pages), News (with article pages), Donate, Impact, FAQ, Contact, Privacy, Terms
+- Admin dashboard: Overview, Analytics, Donations (transactions + status management), Donation Causes, Campaigns, Programs, News, Homepage Content, Images/Gallery, Pages (content overrides), Contact Info + Bank Details, FAQs, Payment Config (Paystack keys + crypto wallets), Users, Activity Log
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Never display "Paystack" to the public — it is only referenced in admin settings
+- Do not redesign existing pages — only complete missing functionality
+- Payment methods: Bank Transfer, Credit/Debit Card, Cryptocurrency only
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- `pnpm run build` on the frontend requires `PORT` env var (set automatically by the workflow runtime)
+- `api-server` will not start without `DATABASE_URL` — this is expected; the frontend does not depend on it
+- The `pnpm install` must be run from the workspace root before workflows start
 
 ## Pointers
 

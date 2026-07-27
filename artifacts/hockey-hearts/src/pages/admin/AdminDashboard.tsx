@@ -8,6 +8,17 @@ import { CampaignSection } from "./sections/CampaignSection";
 import { PaymentSection } from "./sections/PaymentSection";
 import { ActivitySection } from "./sections/ActivitySection";
 import { SettingsSection } from "./sections/SettingsSection";
+import { DonationsSection } from "./sections/DonationsSection";
+import { DonationCausesSection } from "./sections/DonationCausesSection";
+import { ProgramsSection } from "./sections/ProgramsSection";
+import { HomepageSection } from "./sections/HomepageSection";
+import { ImagesSection } from "./sections/ImagesSection";
+import { ContactSection } from "./sections/ContactSection";
+import { FaqSection } from "./sections/FaqSection";
+import { WebsiteSettingsSection } from "./sections/WebsiteSettingsSection";
+import { UsersSection } from "./sections/UsersSection";
+import { AnalyticsSection } from "./sections/AnalyticsSection";
+import { PagesSection } from "./sections/PagesSection";
 import {
   CircleDot,
   LayoutDashboard,
@@ -20,18 +31,63 @@ import {
   Menu,
   X,
   ExternalLink,
+  Heart,
+  DollarSign,
+  Image,
+  Phone,
+  HelpCircle,
+  BarChart3,
+  Users,
+  Home,
+  BookOpen,
+  Wrench,
 } from "lucide-react";
 
-type Section = "overview" | "news" | "campaigns" | "payments" | "activity" | "settings";
+type Section =
+  | "overview"
+  | "donations"
+  | "causes"
+  | "campaigns"
+  | "programs"
+  | "news"
+  | "homepage"
+  | "images"
+  | "pages"
+  | "contact"
+  | "faq"
+  | "settings"
+  | "payments"
+  | "users"
+  | "analytics"
+  | "activity";
 
-const NAV_ITEMS: { id: Section; label: string; icon: React.ElementType }[] = [
-  { id: "overview", label: "Overview", icon: LayoutDashboard },
-  { id: "news", label: "News & Updates", icon: FileText },
-  { id: "campaigns", label: "Campaigns", icon: Target },
-  { id: "payments", label: "Payments & Crypto", icon: CreditCard },
-  { id: "activity", label: "Activity Log", icon: Activity },
-  { id: "settings", label: "Settings", icon: Settings },
+interface NavItem {
+  id: Section;
+  label: string;
+  icon: React.ElementType;
+  group?: string;
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { id: "overview", label: "Overview", icon: LayoutDashboard, group: "Dashboard" },
+  { id: "analytics", label: "Analytics", icon: BarChart3, group: "Dashboard" },
+  { id: "donations", label: "Donations", icon: DollarSign, group: "Donations" },
+  { id: "causes", label: "Donation Causes", icon: Heart, group: "Donations" },
+  { id: "campaigns", label: "Campaigns", icon: Target, group: "Content" },
+  { id: "programs", label: "Programs", icon: BookOpen, group: "Content" },
+  { id: "news", label: "News & Updates", icon: FileText, group: "Content" },
+  { id: "homepage", label: "Homepage Content", icon: Home, group: "Content" },
+  { id: "images", label: "Images & Gallery", icon: Image, group: "Content" },
+  { id: "pages", label: "Pages", icon: BookOpen, group: "Content" },
+  { id: "contact", label: "Contact Info", icon: Phone, group: "Settings" },
+  { id: "faq", label: "FAQs", icon: HelpCircle, group: "Settings" },
+  { id: "settings", label: "Payment Config", icon: CreditCard, group: "Settings" },
+  { id: "payments", label: "Payment Methods", icon: Wrench, group: "Settings" },
+  { id: "users", label: "Users", icon: Users, group: "Settings" },
+  { id: "activity", label: "Activity Log", icon: Activity, group: "Settings" },
 ];
+
+const GROUPS = ["Dashboard", "Donations", "Content", "Settings"];
 
 export default function AdminDashboard() {
   const [, navigate] = useLocation();
@@ -39,9 +95,7 @@ export default function AdminDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    if (!isAdminLoggedIn()) {
-      navigate("/admin");
-    }
+    if (!isAdminLoggedIn()) navigate("/admin");
   }, [navigate]);
 
   if (!isAdminLoggedIn()) return null;
@@ -57,13 +111,26 @@ export default function AdminDashboard() {
   function renderSection() {
     switch (active) {
       case "overview": return <OverviewSection />;
-      case "news": return <NewsSection />;
+      case "analytics": return <AnalyticsSection />;
+      case "donations": return <DonationsSection />;
+      case "causes": return <DonationCausesSection />;
       case "campaigns": return <CampaignSection />;
+      case "programs": return <ProgramsSection />;
+      case "news": return <NewsSection />;
+      case "homepage": return <HomepageSection />;
+      case "images": return <ImagesSection />;
+      case "pages": return <PagesSection />;
+      case "contact": return <ContactSection />;
+      case "faq": return <FaqSection />;
+      case "settings": return <WebsiteSettingsSection />;
       case "payments": return <PaymentSection />;
+      case "users": return <UsersSection />;
       case "activity": return <ActivitySection />;
-      case "settings": return <SettingsSection />;
+      default: return <OverviewSection />;
     }
   }
+
+  const activeLabel = NAV_ITEMS.find((n) => n.id === active)?.label ?? "Dashboard";
 
   function NavContent() {
     return (
@@ -81,25 +148,34 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Nav items */}
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => {
-                setActive(id);
-                setSidebarOpen(false);
-              }}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                active === id
-                  ? "bg-white/15 text-white"
-                  : "text-white/60 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              <Icon className="w-4 h-4 shrink-0" />
-              {label}
-            </button>
-          ))}
+        {/* Nav items grouped */}
+        <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-5">
+          {GROUPS.map((group) => {
+            const items = NAV_ITEMS.filter((n) => n.group === group);
+            return (
+              <div key={group}>
+                <p className="text-white/30 text-xs font-semibold uppercase tracking-wider px-3 mb-2">
+                  {group}
+                </p>
+                <div className="space-y-1">
+                  {items.map(({ id, label, icon: Icon }) => (
+                    <button
+                      key={id}
+                      onClick={() => { setActive(id); setSidebarOpen(false); }}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                        active === id
+                          ? "bg-white/15 text-white"
+                          : "text-white/60 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      <Icon className="w-4 h-4 shrink-0" />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </nav>
 
         {/* Footer */}
@@ -138,17 +214,14 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-60 shrink-0 bg-[#0a1f44] flex-col fixed left-0 top-0 bottom-0 z-40">
+      <aside className="hidden md:flex w-64 shrink-0 bg-[#0a1f44] flex-col fixed left-0 top-0 bottom-0 z-40">
         <NavContent />
       </aside>
 
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setSidebarOpen(false)}
-          />
+          <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
           <aside className="relative w-64 bg-[#0a1f44] flex flex-col h-full z-10">
             <NavContent />
           </aside>
@@ -156,7 +229,7 @@ export default function AdminDashboard() {
       )}
 
       {/* Main content */}
-      <div className="flex-1 md:ml-60 flex flex-col min-h-screen">
+      <div className="flex-1 md:ml-64 flex flex-col min-h-screen">
         {/* Top bar */}
         <header className="sticky top-0 z-30 bg-white border-b border-gray-200 px-4 md:px-8 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -167,9 +240,7 @@ export default function AdminDashboard() {
               <Menu className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="font-bold text-gray-900">
-                {NAV_ITEMS.find((n) => n.id === active)?.label}
-              </h1>
+              <h1 className="font-bold text-gray-900">{activeLabel}</h1>
             </div>
           </div>
           <div className="flex items-center gap-3">
