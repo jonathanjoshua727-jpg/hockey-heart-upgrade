@@ -53,7 +53,7 @@ export function PaymentSection() {
         <h3 className="font-bold text-gray-900">Payment Methods</h3>
         <div className="space-y-4">
           {([
-            { key: "bankTransferEnabled", label: "Bank Transfer", desc: "Manual bank transfer instructions shown to donors" },
+            { key: "bankTransferEnabled", label: "Bank Transfer", desc: "Paystack-powered bank transfer — donor receives a virtual account to transfer to" },
             { key: "cardEnabled", label: "Credit / Debit Card (via Paystack)", desc: "Card payments processed through Paystack" },
             { key: "cryptoEnabled", label: "Cryptocurrency", desc: "Show crypto wallet addresses to donors" },
           ] as const).map(({ key, label, desc }) => (
