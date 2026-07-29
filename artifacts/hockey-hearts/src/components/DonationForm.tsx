@@ -22,6 +22,7 @@ declare global {
         amount: number;
         currency?: string;
         ref?: string;
+        channels?: string[];
         metadata?: Record<string, unknown>;
         callback: (response: { reference: string }) => void;
         onClose: () => void;
@@ -83,10 +84,8 @@ export function DonationForm() {
   const causeLabel = causes.find((c) => c.id === cause)?.label ?? cause;
 
   const selectedCryptoAddress = settings.cryptoWallets[cryptoCoin];
-  const bankConfigured =
-    settings.bankDetails.accountNumber.trim().length > 0 ||
-    settings.bankDetails.bankName.trim().length > 0;
-  const cardConfigured = settings.cardEnabled && settings.paystackPublicKey.length > 0;
+  const paystackConfigured = settings.paystackEnabled && settings.paystackPublicKey.length > 0;
+  const cardConfigured = settings.cardEnabled && paystackConfigured;
   const cryptoConfigured = settings.cryptoEnabled;
 
   function copyAddress() {
@@ -124,9 +123,41 @@ export function DonationForm() {
   async function handleBankTransfer() {
     const err = validate();
     if (err) { setError(err); return; }
-    const ref = randomRef();
-    recordTransaction(ref, "bank_transfer", "pending");
-    setSuccess({ reference: ref, methodLabel: "Bank Transfer" });
+    if (!paystackConfigured) {
+      setError("Bank transfer payments are not yet configured. Please contact us to complete your donation.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await loadPaystack();
+      const ref = randomRef();
+      if (!window.PaystackPop) throw new Error("Payment processor failed to load.");
+      window.PaystackPop.setup({
+        key: settings.paystackPublicKey,
+        email: email.trim(),
+        amount: Math.round(finalAmount * 100),
+        currency: "USD",
+        ref,
+        channels: ["bank_transfer"],
+        metadata: {
+          donorName: anonymous ? "Anonymous" : `${firstName.trim()} ${lastName.trim()}`.trim(),
+          cause: causeLabel,
+          anonymous,
+          message,
+        },
+        callback: (response) => {
+          recordTransaction(response.reference, "bank_transfer", "completed");
+          setSuccess({ reference: response.reference, methodLabel: "Bank Transfer" });
+          setLoading(false);
+        },
+        onClose: () => {
+          setLoading(false);
+        },
+      }).openIframe();
+    } catch {
+      setLoading(false);
+      setError("Failed to load payment processor. Please try again or contact us.");
+    }
   }
 
   async function handleCard() {
@@ -196,10 +227,10 @@ export function DonationForm() {
           <p className="font-mono font-semibold text-primary">{success.reference}</p>
           <p className="text-muted-foreground">Method: {success.methodLabel}</p>
         </div>
-        {(method === "bank" || method === "crypto") && (
+        {method === "crypto" && (
           <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-            Your donation is recorded as <strong>pending</strong>. Once we verify your payment, your
-            donation will be confirmed. Please keep your reference number.
+            Your donation is recorded as <strong>pending</strong>. Once we verify your crypto transfer,
+            your donation will be confirmed. Please keep your reference number.
           </p>
         )}
         <p className="text-xs text-muted-foreground">
@@ -385,57 +416,25 @@ export function DonationForm() {
           ))}
         </div>
 
-        {/* Bank Transfer Details */}
+        {/* Bank Transfer Info */}
         {method === "bank" && (
-          <div className="bg-muted/40 border border-border rounded-xl p-5 space-y-3">
-            {bankConfigured ? (
+          <div className="bg-muted/40 border border-border rounded-xl p-5 space-y-2">
+            {paystackConfigured ? (
               <>
-                <p className="text-sm font-semibold text-foreground">Bank Transfer Details</p>
-                <div className="space-y-2 text-sm">
-                  {settings.bankDetails.bankName && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Bank</span>
-                      <span className="font-medium">{settings.bankDetails.bankName}</span>
-                    </div>
-                  )}
-                  {settings.bankDetails.accountName && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Account Name</span>
-                      <span className="font-medium">{settings.bankDetails.accountName}</span>
-                    </div>
-                  )}
-                  {settings.bankDetails.accountNumber && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Account Number</span>
-                      <span className="font-mono font-medium">{settings.bankDetails.accountNumber}</span>
-                    </div>
-                  )}
-                  {settings.bankDetails.routingNumber && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Routing Number</span>
-                      <span className="font-mono font-medium">{settings.bankDetails.routingNumber}</span>
-                    </div>
-                  )}
-                  {settings.bankDetails.swiftCode && (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">SWIFT Code</span>
-                      <span className="font-mono font-medium">{settings.bankDetails.swiftCode}</span>
-                    </div>
-                  )}
-                </div>
-                {settings.bankDetails.instructions && (
-                  <p className="text-xs text-muted-foreground border-t border-border pt-3">
-                    {settings.bankDetails.instructions}
-                  </p>
-                )}
+                <p className="text-sm font-semibold text-foreground">How it works</p>
+                <p className="text-sm text-muted-foreground">
+                  After clicking the button below, a secure payment window will open and provide
+                  a unique account number for you to transfer to. Your donation is confirmed
+                  automatically once the transfer is received.
+                </p>
               </>
             ) : (
               <p className="text-sm text-muted-foreground">
-                Bank transfer details are being configured. Please contact us at{" "}
+                Bank transfer payments are not yet configured. Please contact us at{" "}
                 <a href="mailto:contacthockeyheartinitiative@gmail.com" className="text-primary underline">
                   contacthockeyheartinitiative@gmail.com
                 </a>{" "}
-                to complete your bank transfer donation.
+                to complete your donation.
               </p>
             )}
           </div>
@@ -552,9 +551,9 @@ export function DonationForm() {
         className="w-full h-16 text-xl rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-md disabled:opacity-60"
       >
         {loading
-          ? "Processing..."
+          ? "Opening payment window…"
           : method === "bank"
-          ? `Confirm Bank Transfer — $${finalAmount.toLocaleString()}`
+          ? `Donate $${finalAmount.toLocaleString()} via Bank Transfer`
           : method === "card"
           ? `Pay $${finalAmount.toLocaleString()} by Card`
           : `I've Sent My Crypto Donation`}
