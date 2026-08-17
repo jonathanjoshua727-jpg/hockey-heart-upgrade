@@ -104,8 +104,16 @@ export interface Faq {
 
 export interface ContactInfo {
   email: string;
+  secondaryEmail?: string;
   phone: string;
+  whatsapp?: string;
+  website?: string;
   address: string;
+  physicalAddress?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  contactMessage?: string;
   socialLinks: {
     facebook: string;
     twitter: string;
@@ -113,6 +121,59 @@ export interface ContactInfo {
     linkedin: string;
     youtube: string;
   };
+}
+
+export interface Supporter {
+  id: string;
+  name: string;
+  role: string;
+  description: string;
+  imageUrl?: string;
+  link?: string;
+  number?: string;
+  active: boolean;
+  order: number;
+  isAmbassador?: boolean;
+}
+
+export interface LegalField {
+  value: string;
+  published: boolean;
+}
+
+export interface LegalInfo {
+  organizationName: string;
+  registrationStatus: LegalField;
+  registrationNumber: LegalField;
+  registrationJurisdiction: LegalField;
+  taxStatus: LegalField;
+  taxIdNumber: LegalField;
+  charityStatus: LegalField;
+  governmentRecognition: LegalField;
+  taxDeductibility: LegalField;
+  registeredAddress: LegalField;
+  legalDisclosure: LegalField;
+}
+
+export interface ImpactMetric {
+  id: string;
+  label: string;
+  target: number;
+  actual: number;
+  unit: string;
+  description?: string;
+  order: number;
+  published: boolean;
+}
+
+export interface LinkClick {
+  id: string;
+  label: string;
+  type: string;
+  destination: string;
+  page: string;
+  timestamp: string;
+  sessionId: string;
 }
 
 export interface SiteSettings {
@@ -171,6 +232,9 @@ const KEYS = {
   galleryImages: 'hhi_gallery_images',
   donationCauses: 'hhi_donation_causes',
   pageContents: 'hhi_page_contents',
+  supporters: 'hhi_supporters',
+  legalInfo: 'hhi_legal_info',
+  impactMetrics: 'hhi_impact_metrics',
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -630,9 +694,17 @@ const SEED_FAQS: Faq[] = [
 ];
 
 const DEFAULT_CONTACT: ContactInfo = {
-  email: 'contacthockeyheartinitiative@gmail.com',
+  email: 'hockeyheartinitiative@gmail.com',
+  secondaryEmail: '',
   phone: '',
-  address: 'Coming Soon',
+  whatsapp: '',
+  website: 'https://hockeyheartinitiative.com',
+  address: '',
+  physicalAddress: '',
+  city: '',
+  state: '',
+  country: '',
+  contactMessage: "We'd love to hear from you. Whether you're interested in supporting our programs, partnering with us, or simply learning more about what we do, reach out and we'll get back to you as soon as possible.",
   socialLinks: {
     facebook: '',
     twitter: '',
@@ -968,4 +1040,27 @@ export function savePageContent(page: PageContent) {
   if (idx >= 0) pages[idx] = page;
   else pages.push(page);
   write(KEYS.pageContents, pages);
+}
+
+// ── Supporters (public read; full management in SupportersSection) ─────────
+const SEED_SUPPORTERS_PUBLIC: Supporter[] = [
+  { id: 's1', name: 'Andrei Svechnikov', role: 'Center · Lead Ambassador', description: 'NHL All-Star and Carolina Hurricanes star Andrei Svechnikov joined as HHI Lead Ambassador in 2026, pledging $200,000 to the equipment grant fund and personally mentoring youth players across North America.', number: '#37', link: 'https://www.nhl.com/hurricanes', active: true, order: 0, isAmbassador: true },
+  { id: 's2', name: 'Marcus Kowalczyk', role: 'Defenseman · Ambassador', description: 'A veteran defenseman known for his commitment to grassroots hockey, Marcus channels his league experience into youth coaching certification workshops across the Midwest.', number: '#4', active: true, order: 1 },
+  { id: 's3', name: 'Tyler Oduya', role: 'Right Wing · Ambassador', description: 'Tyler advocates for greater inclusion and diversity in hockey, partnering with HHI to bring the game to underserved communities across North America.', number: '#21', active: true, order: 2 },
+  { id: 's4', name: 'Viktor Petrov', role: 'Goaltender · Ambassador', description: 'Viktor credits hockey with giving him discipline and purpose. He now funds rink scholarships that give youth their first on-ice experience.', number: '#31', active: true, order: 3 },
+  { id: 's5', name: 'Jenna McAllister', role: 'Forward · Girls & Women in Hockey', description: "A pioneer in women's professional hockey, Jenna champions gender equity and leads HHI's Girls & Women in Hockey Initiative.", number: '#18', active: true, order: 4 },
+  { id: 's6', name: 'Darnell Baptiste', role: 'Center · Community Outreach', description: 'Darnell grew up in a community with no rink access. He now funds mobile rink programs in underserved neighborhoods.', number: '#9', active: true, order: 5 },
+];
+
+export function getSupporters(): Supporter[] {
+  const stored = read<Supporter[] | null>(KEYS.supporters, null);
+  if (!stored) {
+    write(KEYS.supporters, SEED_SUPPORTERS_PUBLIC);
+    return SEED_SUPPORTERS_PUBLIC;
+  }
+  return stored.sort((a, b) => a.order - b.order);
+}
+
+export function getActiveSupporters(): Supporter[] {
+  return getSupporters().filter(s => s.active);
 }

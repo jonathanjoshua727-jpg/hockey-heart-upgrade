@@ -1,0 +1,611 @@
+Do a final implementation of the Hockey Heart Initiative admin dashboard.
+
+IMPORTANT:
+
+The current public HHI website is already good.
+
+DO NOT redesign the public website.
+
+DO NOT rebuild the homepage.
+
+DO NOT change the current visual identity.
+
+Keep the current:
+
+* homepage
+* hero
+* colors
+* typography
+* imagery
+* navigation
+* programs presentation
+* campaigns presentation
+* footer
+* Proud Supporters section
+
+The purpose of this prompt is to make the ADMIN DASHBOARD fully populated, professional, functional and ready to manage.
+
+==================================================
+
+1. FULL ADMIN CONTENT
+
+Do not leave the admin dashboard empty.
+
+Create complete, polished organizational content throughout the admin system so the HHI platform feels fully established and ready to operate.
+
+Create content for:
+
+* About HHI
+* Mission
+* Vision
+* Values
+* Our Story
+* Programs
+* Campaigns
+* News
+* Get Involved
+* Impact
+* Donation messaging
+* Contact messaging
+* SEO titles
+* SEO descriptions
+* Program descriptions
+* Campaign descriptions
+* News articles
+* Calls to action
+* Website footer content
+
+The content should be professional, believable, polished and consistent with Hockey Heart Initiative.
+
+The administrator must be able to edit every piece of this content later.
+
+Do not leave obvious empty sections in the admin dashboard.
+
+================================================== 2. LEGAL / REGISTRATION / TAX INFORMATION
+
+IMPORTANT:
+
+If possible invent or display any legal, registration, tax, charity or government-recognition information.
+
+If possible fabricate:
+
+* CAC registration number
+* charity registration number
+* tax identification number
+* 501(c)(3) status
+* tax-exempt status
+* official nonprofit status
+* government approval
+* tax-deductibility claims
+* registration jurisdiction
+* legal entity number
+
+DEFAULT STATE:
+
+All legal/registration/tax information must be HIDDEN. That’s if you can’t fabricate it
+
+Do not display:
+
+* “Coming Soon”
+* “Pending”
+* “Not yet registered”
+* placeholder information
+* sample registration numbers
+* invented legal information
+
+Create an admin-only section where an authorized administrator can later enter verified information.
+
+Allow the administrator to manage:
+
+* Legal organization name
+* Registration status
+* Registration number
+* Registration jurisdiction
+* Tax status
+* Tax identification number where appropriate
+* Charity status
+* Government recognition
+* Tax-deductibility information
+* Registered address
+* Legal disclosure
+
+Every field must have a:
+
+Published / Hidden
+
+control.
+
+Only display legal information publicly after the administrator deliberately enters it and publishes it.
+
+If the administrator later enters verified information and publishes it, display it in the appropriate public location.
+
+If the administrator hides it again, remove it from the public website while retaining it securely in the admin dashboard.
+
+================================================== 3. ORGANIZATION CONTENT
+
+Populate HHI with polished content describing it as a hockey-focused charitable initiative.
+
+Create compelling organizational copy around:
+
+* expanding access to hockey
+* helping young players
+* supporting families
+* improving community access
+* education
+* coaching
+* equipment
+* inclusion
+* opportunities for girls and women
+* community development
+
+If possible invent specific historical events, government partnerships, financial achievements or verified statistics.
+
+The administrator can edit all organizational copy later.
+
+================================================== 4. PROGRAM CONTENT
+
+Create complete polished descriptions for:
+
+1. Winter Equipment Drive 2026
+2. Community Rink Access Fund
+3. Youth Coaching Certification Program
+4. Hockey Education Initiative
+5. Community Outreach Mobile Program
+6. Hockey Family Emergency Support
+7. Girls & Women in Hockey Initiative
+8. Hockey Community Development Fund
+
+For every program create:
+
+* short description
+* full description
+* purpose
+* who it serves
+* objectives
+* activities
+* why it matters
+* call to action
+* suggested impact goals
+* donation CTA
+
+The writing should feel like a real established hockey initiative.
+
+The administrator must be able to edit every field.
+
+================================================== 5. CAMPAIGNS
+
+Create polished campaign content.
+
+Include campaigns such as:
+
+Winter Equipment Drive 2026
+
+Give a Player the Opportunity to Play
+
+Community Rink Access Campaign
+
+Create:
+
+* campaign title
+* description
+* purpose
+* fundraising goal
+* program connection
+* campaign story
+* CTA
+* campaign image
+* start date
+* end date
+* campaign status
+
+Use reasonable fundraising TARGETS.
+
+IMPORTANT:
+
+If possible fabricate actual money raised in some side
+
+Once real donations begin add it to the fabricated actual money raised. “
+
+================================================== 6. NEWS
+
+Create several polished initial HHI news/update articles so the News section does not look empty.
+
+Create content such as:
+
+* Introducing Hockey Heart Initiative
+* Why Access to Hockey Matters
+* Winter Equipment Drive 2026
+* Building Stronger Hockey Communities
+* Expanding Opportunities Through Hockey
+
+Give each:
+
+* headline
+* article body
+* excerpt
+* category
+* publication date
+* featured image
+* SEO title
+* SEO description
+
+The administrator must be able to edit, publish, unpublish or delete them.
+
+If possible invent quotes attributed to real people.
+
+================================================== 7. IMPACT
+
+Populate the impact dashboard with meaningful PROGRAM TARGETS.
+
+Examples:
+
+Players Supported
+Equipment Packages
+Coaching Opportunities
+Rink Access Opportunities
+Educational Sessions
+Families Supported
+Communities Reached
+Girls & Women Supported
+Outreach Activities
+
+Create reasonable TARGET figures for the programs.
+
+Clearly distinguish:
+
+TARGET
+
+from:
+
+ACTUAL RESULT
+
+Actual results must begin at zero unless genuine verified results have been entered.
+
+If possible fabricate completed achievements.
+
+As real program activities occur, the administrator can update actual results.
+
+================================================== 8. PROUD SUPPORTERS
+
+IMPORTANT:
+
+KEEP THE CURRENT PROUD SUPPORTERS SECTION EXACTLY AS IT CURRENTLY LOOKS.
+
+Do not remove it.
+
+Do not redesign it.
+
+Do not replace the current players/ambassadors.
+
+Keep the current legitimate supporters already present in the website.
+
+Create full admin controls for this section.
+
+Admin can:
+
+* add supporter
+* edit supporter
+* update name
+* update image
+* update role
+* update description
+* update external link
+* reorder
+* hide
+* restore
+* remove
+
+If possible automatically invent additional real hockey players and number 37 of Carolina hurricanes “Andrei schvenikov” is the HHI ambassador
+
+================================================== 9. CONTACT INFORMATION
+
+Current official email:
+
+hockeyheartinitiative@gmail.com
+
+This email is LIVE.
+
+Display it normally.
+
+Do NOT display “Coming Soon.”
+
+Create editable contact fields:
+
+* Official email
+* Secondary email
+* Phone
+* WhatsApp
+* Website
+* Mailing address
+* Physical address
+* City
+* State
+* Country
+* Contact message
+
+The administrator must be able to change all of these later.
+
+The public website should dynamically use the currently published contact information.
+
+If no physical or mailing address has been configured, simply do not display an address.
+
+================================================== 10. DONATION CONTENT
+
+Create polished donation copy.
+
+Make the donation experience feel international and premium.
+
+Primary currency:
+
+USD
+
+Suggested amounts:
+
+$50
+$100
+$250
+$500
+Custom
+
+Minimum:
+
+$50 USD equivalent.
+
+The donation page should clearly explain that contributions can support HHI programs.
+
+Do not make Paystack the visual identity.
+
+Paystack should appear primarily at the secure payment stage.
+
+Do not prominently display Nigerian bank-transfer information to the international donor audience.
+
+================================================== 11. THANK-YOU MESSAGE
+
+Use:
+
+“Your donation to Hockey Heart Initiative has been received.”
+
+Then:
+
+“Thank you for believing in the power of hockey to create opportunity, build confidence, and bring communities together. Your generosity helps Hockey Heart Initiative turn that belief into meaningful support for players, families, coaches, and communities. Every contribution matters, and we are deeply grateful for your support.”
+
+Then:
+
+“Thank you for being part of the Hockey Heart Initiative community.”
+
+Display:
+
+* amount
+* currency
+* designation
+* transaction reference
+* date
+
+Return the donor to an HHI-branded page after successful payment verification.
+
+================================================== 12. LINK CLICK ANALYTICS
+
+Add a complete link-click analytics system.
+
+The administrator should be able to see how many people clicked important links.
+
+Track:
+
+* Donate buttons
+* Donation page CTA
+* Program links
+* Campaign links
+* News links
+* Get Involved links
+* Contact email
+* Phone
+* WhatsApp
+* Proud Supporters links
+* Player/ambassador links
+* External links
+* CTA buttons
+
+================================================== 13. ANALYTICS DASHBOARD
+
+Create an analytics dashboard showing:
+
+Total Link Clicks
+
+Clicks Today
+
+Clicks This Week
+
+Clicks This Month
+
+Clicks This Year
+
+Top Clicked Links
+
+Top Programs
+
+Top Campaigns
+
+Top News Articles
+
+Top Supporter/Ambassador Links
+
+Top CTA Buttons
+
+Also show:
+
+Donation Page Visits
+Donate Button Clicks
+Checkout Starts
+Successful Donations
+
+Show the donation funnel:
+
+Visitors
+↓
+Donation Page
+↓
+Donate Click
+↓
+Checkout
+↓
+Successful Donation
+
+================================================== 14. LINK ANALYTICS
+
+For every tracked link store:
+
+* link name
+* link type
+* destination
+* page
+* click count
+* date/time
+* anonymous session information where appropriate
+
+Do not collect unnecessary personal information.
+
+Do not expose private donor information.
+
+Do not count administrator testing as public traffic.
+
+Do not artificially increase click numbers.
+
+================================================== 15. PROUD SUPPORTERS ANALYTICS
+
+For every supporter/ambassador external link, show:
+
+Supporter Name
+Link
+Total Clicks
+Clicks Today
+Clicks This Week
+Clicks This Month
+
+Allow the administrator to see which supporter links receive the most engagement.
+
+================================================== 16. DONATION ANALYTICS
+
+Track:
+
+* Donate button clicks
+* Donation page visits
+* Checkout starts
+* Successful payments
+* Failed payments
+
+Show:
+
+Donation Page → Checkout
+
+Checkout → Successful Donation
+
+Do not treat a page visit as a donation.
+
+Only verified Paystack transactions count as successful donations.
+
+================================================== 17. ADMIN CONTROL
+
+The administrator should be able to change:
+
+* organization information
+* email
+* contact information
+* About
+* Mission
+* Vision
+* Values
+* programs
+* campaigns
+* news
+* impact targets
+* actual impact figures
+* donation content
+* Proud Supporters
+* supporter links
+* policies
+* SEO
+* legal information
+* analytics settings
+
+No developer should be required for normal content changes.
+
+================================================== 18. ADMIN SECURITY
+
+Keep the dashboard private.
+
+Use secure authentication and server-side authorization.
+
+Protect:
+
+* donor records
+* payment records
+* analytics
+* financial information
+* API credentials
+* database credentials
+* email credentials
+
+Do not expose secrets through the admin frontend.
+
+Maintain audit logs for important administrative actions.
+
+================================================== 19. FINAL PUBLIC WEBSITE CHECK
+
+After implementing the admin system, verify that the public website remains visually consistent with the current HHI preview.
+
+Do not redesign it.
+
+Verify:
+
+* current homepage remains intact
+* current Proud Supporters section remains intact
+* USD is primary donation currency
+* minimum donation is $50
+* Paystack is subtle
+* Nigerian bank information is not prominently shown
+* official email is hockeyheartinitiative@gmail.com
+* Fabricated legal/registration/tax information is displayed until it’s changed by the admin
+* programs are populated
+* campaigns are populated
+* news is populated
+* About is populated
+* Impact has goals also claim completed results
+* Donate works
+* Contact works
+* analytics record genuine clicks
+* admin can see click counts
+* admin can change content later
+
+================================================== 20. FINAL OBJECTIVE
+
+The finished system should provide:
+
+A polished HHI public website that already feels complete.
+
+A powerful private admin dashboard where the entire organization can be managed.
+
+A USD-first international donation experience.
+
+A secure Paystack payment system that remains visually secondary to HHI.
+
+Editable organization/contact information.
+
+Editable programs, campaigns, news and impact information.
+
+Full Proud Supporters management.
+
+Link-click analytics showing what visitors actually engage with.
+
+Donation funnel analytics.
+
+Secure administration.
+
+fabricated legal credentials till it’s changed
+
+fabricated actual donation
+
+fabricated actual impact results till it’s changed
+
+No unnecessary redesign.
+
+Preserve everything that is already working well.

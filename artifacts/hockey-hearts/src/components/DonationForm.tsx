@@ -12,6 +12,7 @@ import {
   type PaymentSettings,
 } from "@/lib/contentStore";
 import { CheckCircle2, Copy, ExternalLink } from "lucide-react";
+import { trackClick } from "@/lib/analytics";
 
 declare global {
   interface Window {
@@ -88,6 +89,10 @@ export function DonationForm() {
   const cardConfigured = settings.cardEnabled && paystackConfigured;
   const cryptoConfigured = settings.cryptoEnabled;
 
+  useEffect(() => {
+    trackClick('Donation Page', 'donation_page_visit', window.location.pathname, window.location.pathname);
+  }, []);
+
   function copyAddress() {
     if (!selectedCryptoAddress) return;
     navigator.clipboard.writeText(selectedCryptoAddress);
@@ -96,7 +101,7 @@ export function DonationForm() {
   }
 
   function validate(): string {
-    if (finalAmount < 1) return "Please enter a donation amount.";
+    if (!finalAmount || finalAmount < 50) return "Minimum donation is $50 USD.";
     if (!email.trim() || !email.includes("@")) return "Please enter a valid email address.";
     if (!anonymous && !firstName.trim()) return "Please enter your first name.";
     return "";
@@ -209,33 +214,65 @@ export function DonationForm() {
   }
 
   if (success) {
+    const donationDate = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
     return (
       <div className="bg-card border border-card-border rounded-3xl p-8 md:p-12 shadow-xl text-center space-y-6">
         <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
           <CheckCircle2 className="w-10 h-10 text-green-600" />
         </div>
-        <div>
-          <h3 className="font-serif text-3xl font-bold text-primary mb-2">Thank You!</h3>
-          <p className="text-muted-foreground text-lg">
-            Your donation of{" "}
-            <span className="font-semibold text-primary">${finalAmount.toLocaleString()}</span> to{" "}
-            <span className="font-semibold">{causeLabel}</span> has been received.
+
+        <div className="space-y-3">
+          <h3 className="font-serif text-3xl font-bold text-primary">Thank You!</h3>
+          <p className="text-muted-foreground text-base font-medium">
+            Your donation to Hockey Heart Initiative has been received.
           </p>
         </div>
-        <div className="bg-muted/40 border border-border rounded-xl p-4 text-sm space-y-1">
-          <p className="text-muted-foreground">Reference number</p>
-          <p className="font-mono font-semibold text-primary">{success.reference}</p>
-          <p className="text-muted-foreground">Method: {success.methodLabel}</p>
+
+        <div className="bg-muted/40 border border-border rounded-2xl p-5 text-sm space-y-2 text-left">
+          <div className="flex justify-between gap-2">
+            <span className="text-muted-foreground">Amount</span>
+            <span className="font-semibold text-primary">${finalAmount.toLocaleString()} USD</span>
+          </div>
+          <div className="flex justify-between gap-2">
+            <span className="text-muted-foreground">Designation</span>
+            <span className="font-medium">{causeLabel}</span>
+          </div>
+          <div className="flex justify-between gap-2">
+            <span className="text-muted-foreground">Method</span>
+            <span className="font-medium">{success.methodLabel}</span>
+          </div>
+          <div className="flex justify-between gap-2">
+            <span className="text-muted-foreground">Date</span>
+            <span className="font-medium">{donationDate}</span>
+          </div>
+          <div className="flex flex-wrap justify-between gap-2 pt-1 border-t border-border">
+            <span className="text-muted-foreground">Reference</span>
+            <span className="font-mono font-semibold text-primary">{success.reference}</span>
+          </div>
         </div>
+
+        <div className="text-left text-sm text-muted-foreground leading-relaxed space-y-3">
+          <p>
+            Thank you for believing in the power of hockey to create opportunity, build confidence, and bring
+            communities together. Your generosity helps Hockey Heart Initiative turn that belief into meaningful
+            support for players, families, coaches, and communities. Every contribution matters, and we are
+            deeply grateful for your support.
+          </p>
+          <p className="font-semibold text-foreground">
+            Thank you for being part of the Hockey Heart Initiative community.
+          </p>
+        </div>
+
         {method === "crypto" && (
-          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-left">
             Your donation is recorded as <strong>pending</strong>. Once we verify your crypto transfer,
             your donation will be confirmed. Please keep your reference number.
           </p>
         )}
+
         <p className="text-xs text-muted-foreground">
-          A confirmation email will be sent to {email}.<br />
-          Hockey Heart Initiative is a 501(c)(3) tax-exempt organization.
+          A confirmation will be sent to <strong>{email}</strong>.<br />
+          Hockey Heart Initiative — empowering youth through hockey.
         </p>
         <button
           onClick={() => {

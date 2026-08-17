@@ -11,12 +11,40 @@ import {
   getPublishedArticles,
   getHomepageContent,
   getSiteSettings,
+  getActiveSupporters,
 } from "@/lib/contentStore";
 import { resolveImage, heroImg, camp1, news1 } from "@/lib/imageRegistry";
+import { trackClick } from "@/lib/analytics";
+
+import type { Supporter } from "@/lib/contentStore";
+
+function SupporterAvatar({ player }: { player: Supporter }) {
+  return (
+    <>
+      <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-secondary/20 border-2 border-secondary/40 flex items-center justify-center group-hover:border-secondary transition-colors overflow-hidden">
+        {player.imageUrl ? (
+          <img
+            src={player.imageUrl}
+            alt={player.name}
+            className="w-full h-full object-cover"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+        ) : (
+          <span className="font-serif text-2xl font-bold text-secondary">
+            {player.number ?? player.name.charAt(0)}
+          </span>
+        )}
+      </div>
+      <p className="font-bold text-sm">{player.name}</p>
+      <p className="text-primary-foreground/60 text-xs mt-1">{player.role}</p>
+    </>
+  );
+}
 
 export default function Home() {
   const homepageContent = getHomepageContent();
   const siteSettings = getSiteSettings();
+  const supporters = getActiveSupporters();
 
   const allCampaigns = getFeaturedCampaigns();
   const featuredCampaigns = allCampaigns.slice(0, 3);
@@ -69,20 +97,19 @@ export default function Home() {
             </p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
-            {[
-              { name: "Andrei Svechnikov", role: "Center / Lead Ambassador", number: "#37" },
-              { name: "Marcus Kowalczyk", role: "Defenseman", number: "#4" },
-              { name: "Tyler Oduya", role: "Right Wing", number: "#21" },
-              { name: "Viktor Petrov", role: "Goaltender", number: "#31" },
-            ].map((player) => (
-              <div key={player.name} className="text-center group">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-secondary/20 border-2 border-secondary/40 flex items-center justify-center group-hover:border-secondary transition-colors">
-                  <span className="font-serif text-2xl font-bold text-secondary">
-                    {player.number}
-                  </span>
-                </div>
-                <p className="font-bold text-sm">{player.name}</p>
-                <p className="text-primary-foreground/60 text-xs mt-1">{player.role}</p>
+            {supporters.slice(0, 8).map((player) => (
+              <div
+                key={player.id}
+                className="text-center group"
+                onClick={() => player.link && trackClick(player.name, 'supporter', player.link, '/')}
+              >
+                {player.link ? (
+                  <a href={player.link} target="_blank" rel="noopener noreferrer" className="block">
+                    <SupporterAvatar player={player} />
+                  </a>
+                ) : (
+                  <SupporterAvatar player={player} />
+                )}
               </div>
             ))}
           </div>

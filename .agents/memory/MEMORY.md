@@ -1,0 +1,3 @@
+- [HHI Project Overview](hhi-overview.md) — Hockey Heart Initiative: React/Vite + localStorage, all data via contentStore.ts, admin via adminAuth.ts
+- [HHI Analytics System](hhi-analytics.md) — link-click tracking in analytics.ts; does not count admin sessions; funnel tracked via type strings
+- [HHI New Admin Sections](hhi-admin-sections.md) — LegalSection/SupportersSection/ImpactSection store data in localStorage directly (not contentStore KEYS); contentStore re-exports getSupporters/getActiveSupporters for public Home.tsx use
