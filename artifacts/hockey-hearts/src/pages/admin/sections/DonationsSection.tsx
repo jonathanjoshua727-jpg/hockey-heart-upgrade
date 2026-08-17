@@ -11,11 +11,15 @@ const STATUS_STYLES: Record<Transaction["status"], string> = {
   completed: "bg-green-100 text-green-700",
   pending: "bg-amber-100 text-amber-700",
   failed: "bg-red-100 text-red-700",
+  cancelled: "bg-gray-100 text-gray-600",
+  refunded: "bg-blue-100 text-blue-700",
 };
 const STATUS_ICONS: Record<Transaction["status"], React.ElementType> = {
   completed: CheckCircle2,
   pending: Clock,
   failed: XCircle,
+  cancelled: XCircle,
+  refunded: RefreshCw,
 };
 
 const METHOD_LABELS: Record<string, string> = {
@@ -107,7 +111,7 @@ export function DonationsSection() {
           placeholder="Search donor, email, cause, ref…"
           className="flex-1 min-w-48 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0a1f44]/20 focus:border-[#0a1f44]"
         />
-        {(["all", "pending", "completed", "failed"] as const).map((s) => (
+        {(["all", "pending", "completed", "failed", "cancelled", "refunded"] as const).map((s) => (
           <button
             key={s}
             onClick={() => setFilter(s)}

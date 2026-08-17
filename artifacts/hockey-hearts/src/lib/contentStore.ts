@@ -37,7 +37,6 @@ export interface Campaign {
 
 export interface PaymentSettings {
   paystackPublicKey: string;
-  paystackSecretKey: string;
   paystackEnabled: boolean;
   cardEnabled: boolean;
   bankTransferEnabled: boolean;
@@ -65,7 +64,7 @@ export interface Transaction {
   amount: number;
   currency: string;
   method: string;
-  status: 'completed' | 'pending' | 'failed';
+  status: 'completed' | 'pending' | 'failed' | 'cancelled' | 'refunded';
   donorName: string;
   donorEmail: string;
   cause: string;
@@ -468,7 +467,6 @@ const SEED_CAMPAIGNS: Campaign[] = [
 
 const DEFAULT_PAYMENT: PaymentSettings = {
   paystackPublicKey: '',
-  paystackSecretKey: '',
   paystackEnabled: false,
   cardEnabled: false,
   bankTransferEnabled: true,
@@ -612,7 +610,7 @@ const SEED_FAQS: Faq[] = [
     id: 'f6',
     question: 'What payment methods do you accept?',
     answer:
-      'We accept Bank Transfer, Credit/Debit Card, and Cryptocurrency (Bitcoin, Ethereum, USDT TRC20, USDT ERC20, and Solana). Please contact us at contacthockeyheartinitiative@gmail.com to complete your donation or ask about payment options.',
+      'We accept Bank Transfer, Credit/Debit Card, and Cryptocurrency (Bitcoin, Ethereum, USDT TRC20, USDT ERC20, and Solana). Please contact us at hockeyheartinitiative@gmail.com to complete your donation or ask about payment options.',
     category: 'Donations',
     order: 1,
     published: true,
@@ -639,7 +637,7 @@ const SEED_FAQS: Faq[] = [
     id: 'f9',
     question: 'Can I set up a recurring donation?',
     answer:
-      'Recurring donation options are currently being configured. Please contact us at contacthockeyheartinitiative@gmail.com and we will set up a recurring arrangement manually.',
+      'Recurring donation options are currently being configured. Please contact us at hockeyheartinitiative@gmail.com and we will set up a recurring arrangement manually.',
     category: 'Donations',
     order: 4,
     published: true,
@@ -649,7 +647,7 @@ const SEED_FAQS: Faq[] = [
     id: 'f10',
     question: 'How does a child apply for equipment assistance?',
     answer:
-      'Applications are accepted through partner rinks and community centers in our network. Contact us at contacthockeyheartinitiative@gmail.com with the child\'s name, age, location, and the specific need. We will connect you with the appropriate program.',
+      'Applications are accepted through partner rinks and community centers in our network. Contact us at hockeyheartinitiative@gmail.com with the child\'s name, age, location, and the specific need. We will connect you with the appropriate program.',
     category: 'Programs',
     order: 0,
     published: true,
@@ -677,7 +675,7 @@ const SEED_FAQS: Faq[] = [
     id: 'f13',
     question: 'Can my organization create a fundraiser for HHI?',
     answer:
-      'Yes! Corporate and community fundraisers are welcome. Contact us at contacthockeyheartinitiative@gmail.com to discuss your idea and we will provide all necessary materials and guidance.',
+      'Yes! Corporate and community fundraisers are welcome. Contact us at hockeyheartinitiative@gmail.com to discuss your idea and we will provide all necessary materials and guidance.',
     category: 'Campaigns & Fundraising',
     order: 0,
     published: true,
@@ -741,48 +739,15 @@ const DEFAULT_HOMEPAGE: HomepageContent = {
 };
 
 const SEED_DONATION_CAUSES: DonationCause[] = [
-  {
-    id: 'general',
-    label: 'General Fund',
-    description: 'Support all HHI programs equally',
-    active: true,
-    order: 0,
-  },
-  {
-    id: 'youth-hockey',
-    label: 'Youth Hockey Development',
-    description: 'Coaching, training, and skill development',
-    active: true,
-    order: 1,
-  },
-  {
-    id: 'community',
-    label: 'Community Hockey Programs',
-    description: 'Local league and community programs',
-    active: true,
-    order: 2,
-  },
-  {
-    id: 'equipment',
-    label: 'Equipment & Gear',
-    description: 'Hockey gear for youth who need it',
-    active: true,
-    order: 3,
-  },
-  {
-    id: 'ice-time',
-    label: 'Ice Time & Training',
-    description: 'Subsidized ice time for youth leagues',
-    active: true,
-    order: 4,
-  },
-  {
-    id: 'outreach',
-    label: 'Community Outreach',
-    description: 'Bringing hockey to underserved areas',
-    active: true,
-    order: 5,
-  },
+  { id: 'general', label: 'Where Needed Most', description: 'Support all HHI programs where the need is greatest', active: true, order: 0 },
+  { id: 'winter-equipment', label: 'Winter Equipment Drive 2026', description: 'Gear and equipment grants for young players', active: true, order: 1 },
+  { id: 'rink-access', label: 'Community Rink Access Fund', description: 'Subsidized ice time and rink access', active: true, order: 2 },
+  { id: 'coaching-cert', label: 'Youth Coaching Certification Program', description: 'Training and certifying community coaches', active: true, order: 3 },
+  { id: 'education', label: 'Hockey Education Initiative', description: 'Learning and life-skills programs through hockey', active: true, order: 4 },
+  { id: 'mobile-outreach', label: 'Community Outreach Mobile Program', description: 'Bringing hockey to underserved areas', active: true, order: 5 },
+  { id: 'family-support', label: 'Hockey Family Emergency Support', description: 'Emergency assistance for hockey families in need', active: true, order: 6 },
+  { id: 'girls-women', label: 'Girls & Women in Hockey Initiative', description: 'Advancing gender equity in the game', active: true, order: 7 },
+  { id: 'community-dev', label: 'Hockey Community Development Fund', description: 'Long-term community hockey development', active: true, order: 8 },
 ];
 
 // ── Articles ──────────────────────────────────────────────────────────────
@@ -853,7 +818,13 @@ export function deleteCampaign(id: string) {
 
 // ── Payment Settings ──────────────────────────────────────────────────────
 export function getPaymentSettings(): PaymentSettings {
-  return read<PaymentSettings>(KEYS.payments, DEFAULT_PAYMENT);
+  const stored = read<PaymentSettings & { paystackSecretKey?: string }>(KEYS.payments, DEFAULT_PAYMENT);
+  // Security migration: never keep a Paystack secret key in browser storage.
+  if ('paystackSecretKey' in stored) {
+    delete stored.paystackSecretKey;
+    write(KEYS.payments, stored);
+  }
+  return stored;
 }
 
 export function savePaymentSettings(settings: PaymentSettings) {
@@ -1005,6 +976,14 @@ export function getDonationCauses(): DonationCause[] {
   if (!stored) {
     write(KEYS.donationCauses, SEED_DONATION_CAUSES);
     return SEED_DONATION_CAUSES;
+  }
+  // Non-destructive migration: merge in any new seeded designations missing by id.
+  const missing = SEED_DONATION_CAUSES.filter((s) => !stored.some((c) => c.id === s.id));
+  if (missing.length > 0) {
+    const maxOrder = stored.reduce((m, c) => Math.max(m, c.order), -1);
+    const merged = [...stored, ...missing.map((s, i) => ({ ...s, order: maxOrder + 1 + i }))];
+    write(KEYS.donationCauses, merged);
+    return merged.sort((a, b) => a.order - b.order);
   }
   return stored.sort((a, b) => a.order - b.order);
 }

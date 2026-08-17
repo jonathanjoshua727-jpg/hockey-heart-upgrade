@@ -66,8 +66,8 @@ export default function Privacy() {
               <p className="text-muted-foreground leading-relaxed">
                 You have the right to request access to, correction of, or deletion of your personal data.
                 To make a request, contact us at{" "}
-                <a href="mailto:contacthockeyheartinitiative@gmail.com" className="text-primary underline">
-                  contacthockeyheartinitiative@gmail.com
+                <a href="mailto:hockeyheartinitiative@gmail.com" className="text-primary underline">
+                  hockeyheartinitiative@gmail.com
                 </a>.
               </p>
             </div>
@@ -93,8 +93,8 @@ export default function Privacy() {
               <h2 className="font-serif text-2xl font-bold text-primary">9. Contact</h2>
               <p className="text-muted-foreground leading-relaxed">
                 For privacy-related questions, contact us at:{" "}
-                <a href="mailto:contacthockeyheartinitiative@gmail.com" className="text-primary underline">
-                  contacthockeyheartinitiative@gmail.com
+                <a href="mailto:hockeyheartinitiative@gmail.com" className="text-primary underline">
+                  hockeyheartinitiative@gmail.com
                 </a>
               </p>
             </div>

@@ -1,6 +1,7 @@
 import { buttonVariants } from "@/components/ui/button";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
+import { trackClick } from "@/lib/analytics";
 
 interface HeroSectionProps {
   image: string;
@@ -34,6 +35,7 @@ export function HeroSection({ image, heading, subheading }: HeroSectionProps) {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link 
               href="/donate"
+              onClick={() => trackClick("Donate Now (Hero)", "donate_button", "/donate", window.location.pathname)}
               className={cn(
                 buttonVariants({ variant: "secondary", size: "lg" }),
                 "w-full sm:w-auto bg-secondary text-secondary-foreground hover:bg-secondary/90 text-lg px-8 py-6 rounded-full font-semibold shadow-lg"

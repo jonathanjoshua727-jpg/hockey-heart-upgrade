@@ -1,0 +1,452 @@
+Do a final audit and refinement of the EXISTING Hockey Heart Initiative donation and payment system.
+
+IMPORTANT:
+
+Do NOT redesign the website.
+
+Do NOT rebuild the donation page.
+
+The current HHI preview is already good.
+
+Only fix, improve and verify the donation/payment functionality described below.
+
+==================================================
+
+1. USD-FIRST DONATION EXPERIENCE
+    ==================================================
+
+USD must be the primary donation currency.
+
+The donation interface should prominently display:
+
+$50
+$100
+$250
+$500
+Custom Amount
+
+Minimum donation:
+
+$50 USD equivalent.
+
+The overall donation experience should feel international and should not look Nigeria-focused.
+
+The primary audience is expected to be from:
+
+* United States
+* Canada
+* Europe
+* other international donors
+
+Do not make Nigerian Naira the primary currency.
+
+Allow other international currencies only where genuinely supported by the configured payment system.
+
+==================================================
+2. PAYSTACK
+
+Use Paystack as the payment infrastructure.
+
+Paystack should NOT dominate the HHI visual experience.
+
+The donor should primarily see:
+
+Hockey Heart Initiative
+
+rather than Paystack.
+
+Preferred flow:
+
+HHI Donation Page
+→ Donation Amount
+→ Program Selection
+→ Donor Information
+→ Secure Payment
+→ Paystack Checkout
+→ HHI Thank-You Page
+
+Paystack branding should only appear where necessary.
+
+A subtle message such as:
+
+“Secure payment powered by Paystack”
+
+is acceptable.
+
+Do not place large Paystack branding throughout the HHI website.
+
+Never expose Paystack secret keys in frontend code.
+
+==================================================
+3. BANK TRANSFER
+
+Paystack may support bank-transfer functionality depending on the account and transaction.
+
+However, HHI’s audience is primarily international.
+
+DO NOT prominently display a Nigerian bank account on the public donation page.
+
+Do not hard-code:
+
+* Nigerian bank name
+* Nigerian account number
+* Nigerian bank-transfer instructions
+* NGN transfer instructions
+
+into the public HHI donation experience.
+
+Do not make the website appear Nigeria-focused.
+
+If Paystack itself presents a payment method based on donor location and eligibility inside its secure checkout, allow Paystack to handle that.
+
+Do not manually force Nigerian bank-transfer information onto international donors.
+
+==================================================
+4. DONATION DESIGNATIONS
+
+Allow donors to choose where their donation should go.
+
+Options:
+
+* Where Needed Most
+* Winter Equipment Drive 2026
+* Community Rink Access Fund
+* Youth Coaching Certification Program
+* Hockey Education Initiative
+* Community Outreach Mobile Program
+* Hockey Family Emergency Support
+* Girls & Women in Hockey Initiative
+* Hockey Community Development Fund
+
+Make these options editable from the admin dashboard.
+
+Do not remove the existing programs.
+
+==================================================
+5. DONATION INFORMATION
+
+Collect only information necessary to process and confirm the donation.
+
+Do not require donors to complete a second form after payment.
+
+Allow anonymous donations where technically possible.
+
+Do not publicly display donor information.
+
+Never store:
+
+* card number
+* CVV
+* payment credentials
+
+in the HHI database.
+
+==================================================
+6. PAYMENT VERIFICATION
+
+A donation must ONLY be marked successful after server-side Paystack verification.
+
+Do not mark a donation successful simply because:
+
+* the donor reaches a success URL
+* the browser redirects
+* frontend state says payment succeeded
+* the donor provides a screenshot
+
+Use Paystack transaction verification and webhooks appropriately.
+
+Make webhook handling idempotent.
+
+Prevent duplicate webhook events from creating duplicate donations.
+
+==================================================
+7. DONATION RECORD
+
+For each verified donation, securely record appropriate information such as:
+
+* donation ID
+* amount
+* currency
+* designation
+* transaction reference
+* payment status
+* donor information where provided
+* anonymous status
+* date/time
+* campaign where applicable
+
+The admin dashboard should be able to view donation records.
+
+==================================================
+8. DONATION STATUS
+
+Support appropriate states such as:
+
+Pending
+Successful
+Failed
+Cancelled
+Refunded
+
+Do not manually treat pending or failed payments as successful donations.
+
+Successful donation totals must be based on verified payment records.
+
+==================================================
+9. THANK-YOU PAGE
+
+After a successful verified payment, return the donor to an HHI-branded thank-you page.
+
+Display:
+
+“Your donation to Hockey Heart Initiative has been received.”
+
+Then display:
+
+“Thank you for believing in the power of hockey to create opportunity, build confidence, and bring communities together. Your generosity helps Hockey Heart Initiative turn that belief into meaningful support for players, families, coaches, and communities. Every contribution matters, and we are deeply grateful for your support.”
+
+Then:
+
+“Thank you for being part of the Hockey Heart Initiative community.”
+
+Display:
+
+* Donation amount
+* Currency
+* Program/designation
+* Transaction reference
+* Date
+
+Do not leave the donor on a Paystack-branded success page.
+
+==================================================
+10. DONATION CONFIRMATION EMAIL
+
+After successful payment verification, send a confirmation email.
+
+Use the current official HHI email:
+
+hockeyheartinitiative@gmail.com
+
+The confirmation should contain:
+
+* Hockey Heart Initiative
+* donation amount
+* currency
+* designation
+* transaction reference
+* date
+* successful payment confirmation
+
+Include a warm appreciation message.
+
+Do not require the donor to submit their details again.
+
+==================================================
+11. DONATION ANALYTICS
+
+Track:
+
+Donation Page Visits
+Donate Button Clicks
+Checkout Starts
+Successful Donations
+Failed Donations
+
+Show the donation funnel:
+
+Donation Page Visits
+↓
+Donate Click
+↓
+Checkout Started
+↓
+Successful Donation
+
+The admin should be able to see:
+
+* total donation page visits
+* total donate clicks
+* total checkout starts
+* successful donations
+* failed donations
+* conversion rate
+* total verified amount donated
+* donations by program
+* donations by campaign
+* donations by currency
+
+Only verified donations should contribute to actual donation totals.
+
+==================================================
+12. LINK CLICK TRACKING
+
+Track important HHI links including:
+
+* Donate buttons
+* Program links
+* Campaign links
+* News links
+* Get Involved links
+* Contact email
+* Phone
+* WhatsApp
+* Proud Supporters links
+* Player/ambassador links
+* External links
+* CTA buttons
+
+The admin should be able to see how many people clicked each link.
+
+Show:
+
+* Total clicks
+* Clicks today
+* Clicks this week
+* Clicks this month
+* Clicks this year
+* Top clicked links
+
+Do not count admin testing as public clicks.
+
+Do not artificially inflate click numbers.
+
+==================================================
+13. PAYSTACK SECURITY
+
+Verify that all Paystack secret credentials are stored securely on the server/environment.
+
+Never expose them in:
+
+* frontend JavaScript
+* public source code
+* browser requests
+* public API responses
+* admin pages where unnecessary
+
+Verify webhook authenticity according to Paystack’s supported verification process.
+
+==================================================
+14. PAYMENT FAILURE HANDLING
+
+If payment fails:
+
+Do not tell the donor that the donation was received.
+
+Instead provide a clear message such as:
+
+“We couldn’t complete your donation. No successful donation was recorded. Please try again.”
+
+Allow the donor to safely return to the donation page.
+
+==================================================
+15. REFRESH / DUPLICATE PROTECTION
+
+Test what happens when a donor:
+
+* refreshes the success page
+* clicks the success link twice
+* returns to the payment callback
+* receives duplicate webhooks
+* closes the browser after payment
+* reopens the payment link
+
+Do not create duplicate donation records.
+
+Do not send duplicate confirmation emails unnecessarily.
+
+==================================================
+16. ADMIN DONATION MANAGEMENT
+
+The secure admin dashboard should allow authorized administrators to:
+
+* view donations
+* search donations
+* filter donations
+* view transaction reference
+* view payment status
+* view designation
+* view campaign
+* view donation date
+* view verified amount
+* view donor information where provided
+* view anonymous donations
+* view donation analytics
+
+Do not expose payment credentials.
+
+==================================================
+17. CURRENT OFFICIAL EMAIL
+
+Use:
+
+hockeyheartinitiative@gmail.com
+
+This email is LIVE.
+
+Do not display “Coming Soon.”
+
+The admin must be able to change the organization email later through the organization/contact settings.
+
+==================================================
+18. FINAL TEST
+
+Test the complete flow:
+
+1. Open donation page.
+2. Select $50.
+3. Select a program.
+4. Enter donor information if required.
+5. Proceed to Paystack.
+6. Complete payment.
+7. Verify transaction server-side.
+8. Record donation.
+9. Trigger confirmation email.
+10. Return donor to HHI thank-you page.
+11. Display the correct donation details.
+12. Update admin donation records.
+13. Update verified donation totals.
+14. Record the relevant donation/link analytics.
+
+Also test:
+
+* failed payment
+* cancelled payment
+* duplicate webhook
+* refresh after success
+* invalid transaction
+* minimum donation
+* custom amount
+* program designation
+* anonymous donation
+
+Fix any problems discovered.
+
+==================================================
+19. FINAL RULE
+
+Do not make unnecessary design changes.
+
+The goal is:
+
+A trustworthy HHI donation experience
++
+USD-first international presentation
++
+Secure Paystack processing
++
+Subtle Paystack branding
++
+No prominent Nigerian bank-transfer information
++
+Reliable server-side verification
++
+Accurate donation records
++
+Accurate click analytics
++
+Professional HHI thank-you experience
++
+Full admin visibility
+
+Preserve the current HHI website design.

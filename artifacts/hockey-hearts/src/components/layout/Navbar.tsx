@@ -3,6 +3,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { CircleDot, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { trackClick } from "@/lib/analytics";
 
 export function Navbar() {
   const [location] = useLocation();
@@ -45,6 +46,7 @@ export function Navbar() {
             ))}
             <Link 
               href="/donate"
+              onClick={() => trackClick("Donate Now (Navbar)", "donate_button", "/donate", location)}
               className={cn(
                 buttonVariants({ variant: "secondary" }),
                 "bg-secondary text-secondary-foreground hover:bg-secondary/80 font-semibold rounded-full px-6"
@@ -82,7 +84,7 @@ export function Navbar() {
             ))}
             <Link 
               href="/donate" 
-              onClick={() => setIsMobileMenuOpen(false)}
+              onClick={() => { setIsMobileMenuOpen(false); trackClick("Donate Now (Mobile Nav)", "donate_button", "/donate", location); }}
               className={cn(
                 buttonVariants({ variant: "secondary" }),
                 "w-full bg-secondary text-secondary-foreground hover:bg-secondary/80 font-semibold rounded-full mt-2"

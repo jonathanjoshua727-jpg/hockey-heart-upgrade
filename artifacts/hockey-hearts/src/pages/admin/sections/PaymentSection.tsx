@@ -4,7 +4,6 @@ import { Save, Eye, EyeOff, ShieldAlert, Bitcoin, Wallet } from "lucide-react";
 
 export function PaymentSection() {
   const [settings, setSettings] = useState<PaymentSettings | null>(null);
-  const [showSecret, setShowSecret] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -101,22 +100,10 @@ export function PaymentSection() {
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-gray-700">Secret Key</label>
-            <div className="relative">
-              <input
-                type={showSecret ? "text" : "password"}
-                value={settings.paystackSecretKey}
-                onChange={(e) => update({ paystackSecretKey: e.target.value })}
-                placeholder="sk_live_xxxxxxxxxxxxxxxx"
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 pr-10 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#0a1f44]/20 focus:border-[#0a1f44]"
-              />
-              <button
-                type="button"
-                onClick={() => setShowSecret((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
+            <p className="text-xs text-gray-500 border border-gray-200 rounded-xl px-4 py-2.5 bg-gray-50">
+              For security, the Paystack secret key is never stored in the website. It belongs
+              in the server environment only.
+            </p>
           </div>
         </div>
 

@@ -32,7 +32,7 @@ declare global {
   }
 }
 
-const PRESET_AMOUNTS = [50, 100, 250, 500, 1000];
+const PRESET_AMOUNTS = [50, 100, 250, 500];
 
 type PayMethod = "bank" | "card" | "crypto";
 type CryptoKey = keyof PaymentSettings["cryptoWallets"];
@@ -86,6 +86,7 @@ export function DonationForm() {
 
   const selectedCryptoAddress = settings.cryptoWallets[cryptoCoin];
   const paystackConfigured = settings.paystackEnabled && settings.paystackPublicKey.length > 0;
+  const bankConfigured = paystackConfigured && settings.bankTransferEnabled;
   const cardConfigured = settings.cardEnabled && paystackConfigured;
   const cryptoConfigured = settings.cryptoEnabled;
 
@@ -128,7 +129,7 @@ export function DonationForm() {
   async function handleBankTransfer() {
     const err = validate();
     if (err) { setError(err); return; }
-    if (!paystackConfigured) {
+    if (!bankConfigured) {
       setError("Bank transfer payments are not yet configured. Please contact us to complete your donation.");
       return;
     }
@@ -137,6 +138,7 @@ export function DonationForm() {
       await loadPaystack();
       const ref = randomRef();
       if (!window.PaystackPop) throw new Error("Payment processor failed to load.");
+      let paid = false;
       window.PaystackPop.setup({
         key: settings.paystackPublicKey,
         email: email.trim(),
@@ -151,14 +153,20 @@ export function DonationForm() {
           message,
         },
         callback: (response) => {
+          paid = true;
           recordTransaction(response.reference, "bank_transfer", "completed");
+          trackClick("Donation Completed", "donation_success", "/donate", window.location.pathname);
           setSuccess({ reference: response.reference, methodLabel: "Bank Transfer" });
           setLoading(false);
         },
         onClose: () => {
           setLoading(false);
+          if (paid) return;
+          trackClick("Checkout Closed", "donation_failed", "/donate", window.location.pathname);
+          setError("We couldn't complete your donation. No successful donation was recorded. Please try again.");
         },
       }).openIframe();
+      trackClick("Checkout Started (Bank Transfer)", "checkout_start", "/donate", window.location.pathname);
     } catch {
       setLoading(false);
       setError("Failed to load payment processor. Please try again or contact us.");
@@ -177,6 +185,7 @@ export function DonationForm() {
       await loadPaystack();
       const ref = randomRef();
       if (!window.PaystackPop) throw new Error("Paystack failed to load.");
+      let paid = false;
       window.PaystackPop.setup({
         key: settings.paystackPublicKey,
         email: email.trim(),
@@ -190,14 +199,20 @@ export function DonationForm() {
           message,
         },
         callback: (response) => {
+          paid = true;
           recordTransaction(response.reference, "card", "completed");
+          trackClick("Donation Completed", "donation_success", "/donate", window.location.pathname);
           setSuccess({ reference: response.reference, methodLabel: "Credit/Debit Card" });
           setLoading(false);
         },
         onClose: () => {
           setLoading(false);
+          if (paid) return;
+          trackClick("Checkout Closed", "donation_failed", "/donate", window.location.pathname);
+          setError("We couldn't complete your donation. No successful donation was recorded. Please try again.");
         },
       }).openIframe();
+      trackClick("Checkout Started (Card)", "checkout_start", "/donate", window.location.pathname);
     } catch {
       setLoading(false);
       setError("Failed to load payment processor. Please try again or use Bank Transfer.");
@@ -316,8 +331,8 @@ export function DonationForm() {
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">$</span>
             <Input
               type="number"
-              min={1}
-              placeholder="Other"
+              min={50}
+              placeholder="Custom"
               value={customAmount}
               onChange={(e) => { setCustomAmount(e.target.value); setAmount("custom"); }}
               className={`h-14 pl-8 text-lg font-semibold rounded-xl transition-colors ${
@@ -456,7 +471,7 @@ export function DonationForm() {
         {/* Bank Transfer Info */}
         {method === "bank" && (
           <div className="bg-muted/40 border border-border rounded-xl p-5 space-y-2">
-            {paystackConfigured ? (
+            {bankConfigured ? (
               <>
                 <p className="text-sm font-semibold text-foreground">How it works</p>
                 <p className="text-sm text-muted-foreground">
@@ -468,8 +483,8 @@ export function DonationForm() {
             ) : (
               <p className="text-sm text-muted-foreground">
                 Bank transfer payments are not yet configured. Please contact us at{" "}
-                <a href="mailto:contacthockeyheartinitiative@gmail.com" className="text-primary underline">
-                  contacthockeyheartinitiative@gmail.com
+                <a href="mailto:hockeyheartinitiative@gmail.com" className="text-primary underline">
+                  hockeyheartinitiative@gmail.com
                 </a>{" "}
                 to complete your donation.
               </p>
@@ -535,8 +550,8 @@ export function DonationForm() {
             ) : (
               <p className="text-sm text-muted-foreground">
                 Cryptocurrency wallets are being configured. Please contact{" "}
-                <a href="mailto:contacthockeyheartinitiative@gmail.com" className="text-primary underline">
-                  contacthockeyheartinitiative@gmail.com
+                <a href="mailto:hockeyheartinitiative@gmail.com" className="text-primary underline">
+                  hockeyheartinitiative@gmail.com
                 </a>{" "}
                 to donate via crypto.
               </p>
@@ -548,8 +563,8 @@ export function DonationForm() {
           <div className="bg-muted/40 border border-border rounded-xl p-4">
             <p className="text-sm text-muted-foreground">
               Card payments are being configured. Please use Bank Transfer or contact us at{" "}
-              <a href="mailto:contacthockeyheartinitiative@gmail.com" className="text-primary underline">
-                contacthockeyheartinitiative@gmail.com
+              <a href="mailto:hockeyheartinitiative@gmail.com" className="text-primary underline">
+                hockeyheartinitiative@gmail.com
               </a>
               .
             </p>
@@ -601,10 +616,7 @@ export function DonationForm() {
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
-          Secure donation processing
-        </p>
-        <p className="text-xs text-muted-foreground">
-          Hockey Heart Initiative is a 501(c)(3) tax-exempt organization.
+          Secure payment powered by Paystack
         </p>
       </div>
     </form>

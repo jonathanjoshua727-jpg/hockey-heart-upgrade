@@ -43,6 +43,11 @@ export function AnalyticsSection() {
     causeMap[tx.cause] = (causeMap[tx.cause] ?? 0) + tx.amount;
   }
 
+  const currencyMap: Record<string, number> = {};
+  for (const tx of completed) {
+    currencyMap[tx.currency || "USD"] = (currencyMap[tx.currency || "USD"] ?? 0) + tx.amount;
+  }
+
   const topCampaigns = [...campaigns].sort((a, b) => b.raised - a.raised).slice(0, 5);
   const recentLog = getActivityLog().slice(0, 6);
 
@@ -248,6 +253,45 @@ export function AnalyticsSection() {
                   <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
                     <div className="h-2 rounded-full bg-[#a8d8ea]" style={{ width: `${pct(amount, totalRaised)}%` }} />
                   </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Program / designation breakdown */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-4">
+          <h3 className="font-bold text-gray-900">Donations by Program</h3>
+          {Object.keys(causeMap).length === 0 ? (
+            <p className="text-gray-400 text-sm italic">No confirmed donations yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {Object.entries(causeMap).sort(([, a], [, b]) => b - a).map(([cause, amount]) => (
+                <div key={cause} className="space-y-1">
+                  <div className="flex justify-between text-sm gap-2">
+                    <span className="text-gray-700 truncate">{cause}</span>
+                    <span className="font-semibold shrink-0">${amount.toLocaleString()}</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                    <div className="h-2 rounded-full bg-[#0a1f44]/70" style={{ width: `${pct(amount, totalRaised)}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Currency breakdown */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-4">
+          <h3 className="font-bold text-gray-900">Donations by Currency</h3>
+          {Object.keys(currencyMap).length === 0 ? (
+            <p className="text-gray-400 text-sm italic">No confirmed donations yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {Object.entries(currencyMap).sort(([, a], [, b]) => b - a).map(([cur, amount]) => (
+                <div key={cur} className="flex justify-between text-sm">
+                  <span className="text-gray-700 font-medium">{cur}</span>
+                  <span className="font-semibold">{amount.toLocaleString()} {cur}</span>
                 </div>
               ))}
             </div>
