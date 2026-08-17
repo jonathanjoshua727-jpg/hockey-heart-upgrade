@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { getTransactions, getCampaigns, getArticles, getActivityLog } from "@/lib/contentStore";
+import { fetchDonationStats, type DonationStats } from "@/lib/donationApi";
 import { getAllClicks, getClickStats, getTopLinks, getSupporterClicks, getDonationFunnel } from "@/lib/analytics";
 import { MousePointerClick, TrendingUp, BarChart3, Users, ArrowDown } from "lucide-react";
 
@@ -24,28 +25,47 @@ export function AnalyticsSection() {
   const supporterLinks = useMemo(() => getSupporterClicks(clicks), [clicks]);
   const funnel = useMemo(() => getDonationFunnel(), []);
 
-  const completed = transactions.filter((t) => t.status === "completed");
-  const pending = transactions.filter((t) => t.status === "pending");
-  const totalRaised = completed.reduce((s, t) => s + t.amount, 0);
-  const avgDonation = completed.length > 0 ? Math.round(totalRaised / completed.length) : 0;
+  // Verified donation stats come from the payment backend; localStorage
+  // transactions only cover manually recorded crypto donations.
+  const [stats, setStats] = useState<DonationStats | null>(null);
+  useEffect(() => {
+    fetchDonationStats().then(setStats).catch(() => setStats(null));
+  }, []);
+
+  const localCrypto = transactions.filter((t) => t.method.startsWith("crypto_"));
+  const completed = localCrypto.filter((t) => t.status === "completed");
+  const pending = localCrypto.filter((t) => t.status === "pending");
+  const completedCount = completed.length + (stats?.counts.successful ?? 0);
+  const totalRaised =
+    completed.reduce((s, t) => s + t.amount, 0) + (stats?.totalRaised ?? 0);
+  const avgDonation = completedCount > 0 ? Math.round(totalRaised / completedCount) : 0;
   const totalGoal = campaigns.reduce((s, c) => s + c.goal, 0);
   const totalCampaignRaised = campaigns.reduce((s, c) => s + c.raised, 0);
   const overallProgress = pct(totalCampaignRaised, totalGoal);
 
   const methodMap: Record<string, number> = {};
   for (const tx of completed) {
-    const m = tx.method.startsWith("crypto_") ? "Cryptocurrency" : tx.method === "bank_transfer" ? "Bank Transfer" : "Credit/Debit Card";
-    methodMap[m] = (methodMap[m] ?? 0) + tx.amount;
+    methodMap["Cryptocurrency"] = (methodMap["Cryptocurrency"] ?? 0) + tx.amount;
+  }
+  for (const m of stats?.byMethod ?? []) {
+    const label = m.method === "bank_transfer" ? "Bank Transfer" : m.method === "card" ? "Credit/Debit Card" : m.method;
+    methodMap[label] = (methodMap[label] ?? 0) + m.total;
   }
 
   const causeMap: Record<string, number> = {};
   for (const tx of completed) {
     causeMap[tx.cause] = (causeMap[tx.cause] ?? 0) + tx.amount;
   }
+  for (const c of stats?.byCause ?? []) {
+    causeMap[c.causeLabel] = (causeMap[c.causeLabel] ?? 0) + c.total;
+  }
 
   const currencyMap: Record<string, number> = {};
   for (const tx of completed) {
     currencyMap[tx.currency || "USD"] = (currencyMap[tx.currency || "USD"] ?? 0) + tx.amount;
+  }
+  for (const c of stats?.byCurrency ?? []) {
+    currencyMap[c.currency] = (currencyMap[c.currency] ?? 0) + c.total;
   }
 
   const topCampaigns = [...campaigns].sort((a, b) => b.raised - a.raised).slice(0, 5);

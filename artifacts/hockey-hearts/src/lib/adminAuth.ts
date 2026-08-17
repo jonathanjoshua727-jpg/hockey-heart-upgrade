@@ -1,5 +1,10 @@
 // Admin authentication utilities
 // No hardcoded passwords — all credentials stored as SHA-256 hashes
+import {
+  adminServerLogin,
+  adminUpdateServerCredentials,
+  clearAdminApiToken,
+} from "./donationApi";
 
 const KEYS = {
   credentials: "hhi_admin_credentials",
@@ -70,6 +75,11 @@ export async function loginAdmin(
     expiresAt: Date.now() + SESSION_DURATION_MS,
   };
   sessionStorage.setItem(KEYS.session, JSON.stringify(session));
+
+  // Also authenticate against the backend so admin sections can read
+  // verified donations. Non-fatal if the API is briefly unavailable.
+  await adminServerLogin(creds.username, password).catch(() => false);
+
   return { ok: true };
 }
 
@@ -94,6 +104,7 @@ export function isAdminLoggedIn(): boolean {
 
 export function logoutAdmin(): void {
   sessionStorage.removeItem(KEYS.session);
+  clearAdminApiToken();
 }
 
 export async function changeAdminPassword(
@@ -113,6 +124,10 @@ export async function changeAdminPassword(
   const newHash = await sha256(newPassword);
   const updated: Credentials = { ...creds, passwordHash: newHash };
   localStorage.setItem(KEYS.credentials, JSON.stringify(updated));
+
+  // Keep the backend admin account in sync.
+  await adminUpdateServerCredentials(creds.username, newPassword).catch(() => false);
+
   return { ok: true };
 }
 

@@ -13,6 +13,7 @@ import {
 } from "@/lib/contentStore";
 import { CheckCircle2, Copy, ExternalLink } from "lucide-react";
 import { trackClick } from "@/lib/analytics";
+import { initializeDonation, verifyDonation } from "@/lib/donationApi";
 
 declare global {
   interface Window {
@@ -126,97 +127,89 @@ export function DonationForm() {
     saveTransaction(tx);
   }
 
-  async function handleBankTransfer() {
+  async function handlePaystackDonation(payMethod: "bank_transfer" | "card") {
     const err = validate();
     if (err) { setError(err); return; }
+    const methodLabel = payMethod === "bank_transfer" ? "Bank Transfer" : "Credit/Debit Card";
+    setLoading(true);
+    try {
+      // 1. Server-side initialization: validates amount/program and creates
+      //    a pending record. The reference comes from the server.
+      const init = await initializeDonation({
+        amount: finalAmount,
+        causeId: cause,
+        causeLabel,
+        donorName: anonymous ? "Anonymous" : `${firstName.trim()} ${lastName.trim()}`.trim(),
+        email: email.trim(),
+        anonymous,
+        message: message.trim() || undefined,
+        method: payMethod,
+      });
+
+      await loadPaystack();
+      if (!window.PaystackPop) throw new Error("Payment processor failed to load.");
+      let callbackFired = false;
+      window.PaystackPop.setup({
+        key: settings.paystackPublicKey,
+        email: init.email,
+        amount: init.amountCents,
+        currency: "USD",
+        ref: init.reference,
+        ...(payMethod === "bank_transfer" ? { channels: ["bank_transfer"] } : {}),
+        metadata: {
+          donorName: anonymous ? "Anonymous" : `${firstName.trim()} ${lastName.trim()}`.trim(),
+          cause: causeLabel,
+          anonymous,
+          message,
+        },
+        callback: (response) => {
+          callbackFired = true;
+          // 2. Server-side verification — the frontend never decides success.
+          verifyDonation(response.reference)
+            .then((result) => {
+              setLoading(false);
+              if (result.verified) {
+                trackClick("Donation Completed", "donation_success", "/donate", window.location.pathname);
+                setSuccess({ reference: response.reference, methodLabel });
+              } else {
+                trackClick("Verification Failed", "donation_failed", "/donate", window.location.pathname);
+                setError(result.error || "We couldn't complete your donation. No successful donation was recorded. Please try again.");
+              }
+            })
+            .catch(() => {
+              setLoading(false);
+              trackClick("Verification Failed", "donation_failed", "/donate", window.location.pathname);
+              setError("We couldn't complete your donation. No successful donation was recorded. Please try again.");
+            });
+        },
+        onClose: () => {
+          if (callbackFired) return;
+          setLoading(false);
+          trackClick("Checkout Closed", "donation_failed", "/donate", window.location.pathname);
+          setError("We couldn't complete your donation. No successful donation was recorded. Please try again.");
+        },
+      }).openIframe();
+      trackClick(`Checkout Started (${methodLabel})`, "checkout_start", "/donate", window.location.pathname);
+    } catch (e) {
+      setLoading(false);
+      setError(e instanceof Error && e.message ? e.message : "Failed to start your donation. Please try again or contact us.");
+    }
+  }
+
+  function handleBankTransfer() {
     if (!bankConfigured) {
       setError("Bank transfer payments are not yet configured. Please contact us to complete your donation.");
       return;
     }
-    setLoading(true);
-    try {
-      await loadPaystack();
-      const ref = randomRef();
-      if (!window.PaystackPop) throw new Error("Payment processor failed to load.");
-      let paid = false;
-      window.PaystackPop.setup({
-        key: settings.paystackPublicKey,
-        email: email.trim(),
-        amount: Math.round(finalAmount * 100),
-        currency: "USD",
-        ref,
-        channels: ["bank_transfer"],
-        metadata: {
-          donorName: anonymous ? "Anonymous" : `${firstName.trim()} ${lastName.trim()}`.trim(),
-          cause: causeLabel,
-          anonymous,
-          message,
-        },
-        callback: (response) => {
-          paid = true;
-          recordTransaction(response.reference, "bank_transfer", "completed");
-          trackClick("Donation Completed", "donation_success", "/donate", window.location.pathname);
-          setSuccess({ reference: response.reference, methodLabel: "Bank Transfer" });
-          setLoading(false);
-        },
-        onClose: () => {
-          setLoading(false);
-          if (paid) return;
-          trackClick("Checkout Closed", "donation_failed", "/donate", window.location.pathname);
-          setError("We couldn't complete your donation. No successful donation was recorded. Please try again.");
-        },
-      }).openIframe();
-      trackClick("Checkout Started (Bank Transfer)", "checkout_start", "/donate", window.location.pathname);
-    } catch {
-      setLoading(false);
-      setError("Failed to load payment processor. Please try again or contact us.");
-    }
+    return handlePaystackDonation("bank_transfer");
   }
 
-  async function handleCard() {
-    const err = validate();
-    if (err) { setError(err); return; }
+  function handleCard() {
     if (!cardConfigured) {
       setError("Card payments are not yet configured. Please use Bank Transfer or contact us.");
       return;
     }
-    setLoading(true);
-    try {
-      await loadPaystack();
-      const ref = randomRef();
-      if (!window.PaystackPop) throw new Error("Paystack failed to load.");
-      let paid = false;
-      window.PaystackPop.setup({
-        key: settings.paystackPublicKey,
-        email: email.trim(),
-        amount: Math.round(finalAmount * 100),
-        currency: "USD",
-        ref,
-        metadata: {
-          donorName: anonymous ? "Anonymous" : `${firstName.trim()} ${lastName.trim()}`.trim(),
-          cause: causeLabel,
-          anonymous,
-          message,
-        },
-        callback: (response) => {
-          paid = true;
-          recordTransaction(response.reference, "card", "completed");
-          trackClick("Donation Completed", "donation_success", "/donate", window.location.pathname);
-          setSuccess({ reference: response.reference, methodLabel: "Credit/Debit Card" });
-          setLoading(false);
-        },
-        onClose: () => {
-          setLoading(false);
-          if (paid) return;
-          trackClick("Checkout Closed", "donation_failed", "/donate", window.location.pathname);
-          setError("We couldn't complete your donation. No successful donation was recorded. Please try again.");
-        },
-      }).openIframe();
-      trackClick("Checkout Started (Card)", "checkout_start", "/donate", window.location.pathname);
-    } catch {
-      setLoading(false);
-      setError("Failed to load payment processor. Please try again or use Bank Transfer.");
-    }
+    return handlePaystackDonation("card");
   }
 
   async function handleCryptoConfirm() {
