@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { changeAdminPassword, getAdminUsername, logoutAdmin } from "@/lib/adminAuth";
 import { logActivity } from "@/lib/contentStore";
+import { sendAdminTestEmail } from "@/lib/donationApi";
 import { useLocation } from "wouter";
-import { Eye, EyeOff, Lock, LogOut, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, Lock, LogOut, Mail, ShieldCheck } from "lucide-react";
 
 export function SettingsSection() {
   const [, navigate] = useLocation();
@@ -14,6 +15,11 @@ export function SettingsSection() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Test email
+  const [testEmailTo, setTestEmailTo] = useState("");
+  const [testEmailLoading, setTestEmailLoading] = useState(false);
+  const [testEmailResult, setTestEmailResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
@@ -39,6 +45,20 @@ export function SettingsSection() {
     setCurrent("");
     setNext("");
     setConfirm("");
+  }
+
+  async function handleSendTestEmail(e: React.FormEvent) {
+    e.preventDefault();
+    setTestEmailResult(null);
+    setTestEmailLoading(true);
+    const result = await sendAdminTestEmail(testEmailTo);
+    setTestEmailLoading(false);
+    setTestEmailResult({
+      ok: result.ok,
+      message: result.ok
+        ? (result.message ?? `Test email sent to ${testEmailTo}`)
+        : (result.error ?? "Failed to send. Check that the domain is verified in Resend."),
+    });
   }
 
   function handleLogout() {
@@ -69,6 +89,47 @@ export function SettingsSection() {
           <ShieldCheck className="w-4 h-4" />
           Session active · expires in ~8 hours
         </div>
+      </div>
+
+      {/* Test email delivery */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <Mail className="w-5 h-5 text-gray-500" />
+          <div>
+            <h3 className="font-bold text-gray-900">Test Donation Email</h3>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Sends a sample confirmation from donations@hockeyheartinitiative.com to verify inbox delivery.
+            </p>
+          </div>
+        </div>
+        <form onSubmit={handleSendTestEmail} className="flex gap-2">
+          <input
+            type="email"
+            required
+            placeholder="your@gmail.com"
+            value={testEmailTo}
+            onChange={(e) => setTestEmailTo(e.target.value)}
+            className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0a1f44]/20 focus:border-[#0a1f44]"
+          />
+          <button
+            type="submit"
+            disabled={testEmailLoading}
+            className="bg-[#0a1f44] text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-[#0a1f44]/90 transition-colors disabled:opacity-50 whitespace-nowrap"
+          >
+            {testEmailLoading ? "Sending…" : "Send Test"}
+          </button>
+        </form>
+        {testEmailResult && (
+          <div
+            className={`px-4 py-3 rounded-xl text-sm ${
+              testEmailResult.ok
+                ? "bg-green-50 border border-green-200 text-green-700"
+                : "bg-red-50 border border-red-200 text-red-600"
+            }`}
+          >
+            {testEmailResult.ok ? "✓ " : "✗ "}{testEmailResult.message}
+          </div>
+        )}
       </div>
 
       {/* Change password */}

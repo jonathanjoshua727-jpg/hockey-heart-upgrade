@@ -5,6 +5,7 @@ import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import crypto from "node:crypto";
 import { issueAdminToken, requireAdmin } from "../lib/adminToken";
 import { logger } from "../lib/logger";
+import { sendDonationConfirmation } from "../lib/mailer";
 
 const router: IRouter = Router();
 
@@ -237,6 +238,80 @@ router.get("/admin/donations/stats", requireAdmin, async (_req, res) => {
       count: Number(c.count),
     })),
   });
+});
+
+// ── Send a test donation confirmation email ───────────────────────────────
+router.post("/admin/test-email", requireAdmin, async (req, res) => {
+  const parsed = z
+    .object({ to: z.string().email().max(320) })
+    .safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Provide a valid `to` email address." });
+    return;
+  }
+  const to = parsed.data.to;
+  const testRef = "HHI-TEST-" + Date.now().toString(36).toUpperCase();
+  const sent = await sendDonationConfirmation({
+    to,
+    donorName: "Test Donor",
+    amountUsd: 100,
+    causeLabel: "General Support",
+    reference: testRef,
+    date: new Date().toISOString(),
+  }).catch(() => false);
+
+  if (sent) {
+    logger.info({ to, reference: testRef }, "Test donation confirmation email sent by admin");
+    res.json({ ok: true, message: `Test email sent to ${to} (reference: ${testRef})` });
+  } else {
+    logger.warn({ to }, "Test email send failed — check RESEND_API_KEY and domain verification");
+    res.status(502).json({
+      ok: false,
+      error:
+        "Resend rejected the email. Check that RESEND_API_KEY is set and hockeyheartinitiative.com is verified in the Resend dashboard.",
+    });
+  }
+});
+
+// ── Check Resend domain verification status ───────────────────────────────
+router.get("/admin/email-domain-status", requireAdmin, async (_req, res) => {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    res.status(503).json({ error: "RESEND_API_KEY is not configured." });
+    return;
+  }
+  try {
+    // Attempt to list domains — this requires a full API key (not a sending-only key).
+    // If the key is scoped to sending only, the 403 response says so explicitly.
+    const response = await fetch("https://api.resend.com/domains", {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    const body = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+
+    if (!response.ok) {
+      const message =
+        response.status === 403
+          ? "API key does not have permission to list domains. Open https://resend.com/domains in the Resend dashboard to verify hockeyheartinitiative.com."
+          : `Resend API returned ${response.status}.`;
+      res.status(200).json({ canListDomains: false, status: response.status, message, raw: body });
+      return;
+    }
+
+    // Find our domain in the list
+    type ResendDomain = { id: string; name: string; status: string; records?: unknown[] };
+    const domains: ResendDomain[] = Array.isArray((body as { data?: unknown[] })?.data)
+      ? ((body as { data: ResendDomain[] }).data)
+      : [];
+    const ours = domains.find((d) => d.name === "hockeyheartinitiative.com");
+    res.json({
+      canListDomains: true,
+      domain: ours ?? null,
+      allDomains: domains.map((d) => ({ id: d.id, name: d.name, status: d.status })),
+    });
+  } catch (err) {
+    logger.error({ err }, "Failed to query Resend domains");
+    res.status(502).json({ error: "Could not reach Resend API." });
+  }
 });
 
 export default router;

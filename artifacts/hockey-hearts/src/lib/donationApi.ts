@@ -154,6 +154,23 @@ function adminHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+export async function sendAdminTestEmail(
+  to: string,
+): Promise<{ ok: boolean; message?: string; error?: string }> {
+  const token = getAdminApiToken();
+  if (!token) return { ok: false, error: "Not authenticated." };
+  try {
+    const result = await jsonFetch<{ ok: boolean; message?: string }>("/admin/test-email", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ to }),
+    });
+    return result;
+  } catch (err) {
+    return { ok: false, error: (err as Error).message };
+  }
+}
+
 export function fetchAdminDonations(params: {
   status?: string;
   search?: string;
