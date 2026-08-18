@@ -5,8 +5,8 @@ import {
   deleteTransaction,
   type Transaction,
 } from "@/lib/contentStore";
-import { fetchAdminDonations, type ServerDonation } from "@/lib/donationApi";
-import { CheckCircle2, Clock, XCircle, Trash2, RefreshCw, ShieldCheck } from "lucide-react";
+import { fetchAdminDonations, sendAdminTestEmail, type ServerDonation } from "@/lib/donationApi";
+import { CheckCircle2, Clock, XCircle, Trash2, RefreshCw, ShieldCheck, Mail, Loader2 } from "lucide-react";
 
 const STATUS_STYLES: Record<Transaction["status"], string> = {
   completed: "bg-green-100 text-green-700",
@@ -66,6 +66,9 @@ export function DonationsSection() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [apiError, setApiError] = useState("");
+  const [testEmailTo, setTestEmailTo] = useState("");
+  const [testEmailSending, setTestEmailSending] = useState(false);
+  const [testEmailResult, setTestEmailResult] = useState<{ ok: boolean; text: string } | null>(null);
 
   const refresh = useCallback(async () => {
     // Locally recorded transactions (crypto donations are manual/off-gateway).
@@ -147,6 +150,20 @@ export function DonationsSection() {
     refresh();
   }
 
+  async function handleSendTestEmail() {
+    const to = testEmailTo.trim();
+    if (!to || testEmailSending) return;
+    setTestEmailSending(true);
+    setTestEmailResult(null);
+    const result = await sendAdminTestEmail(to);
+    setTestEmailResult(
+      result.ok
+        ? { ok: true, text: result.message ?? `Test email sent to ${to}.` }
+        : { ok: false, text: result.error ?? "Sending failed." },
+    );
+    setTestEmailSending(false);
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -161,6 +178,47 @@ export function DonationsSection() {
           {apiError}
         </div>
       )}
+
+      {/* Temporary: send a test confirmation email through Resend */}
+      <div className="bg-white border border-dashed border-gray-300 rounded-2xl p-5">
+        <div className="flex items-center gap-2 mb-1">
+          <Mail className="w-4 h-4 text-[#0a1f44]" />
+          <h3 className="font-semibold text-gray-900 text-sm">Send Test Email</h3>
+          <span className="text-[10px] uppercase tracking-wide bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold">Temporary</span>
+        </div>
+        <p className="text-xs text-gray-500 mb-3">
+          Sends a real donation-confirmation test email from hockeyheartinitiative.com via Resend. Use this to verify inbox delivery.
+        </p>
+        <div className="flex flex-wrap gap-2 items-center">
+          <input
+            type="email"
+            value={testEmailTo}
+            onChange={(e) => { setTestEmailTo(e.target.value); setTestEmailResult(null); }}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSendTestEmail(); }}
+            placeholder="recipient@example.com"
+            className="flex-1 min-w-56 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0a1f44]/20 focus:border-[#0a1f44]"
+          />
+          <button
+            onClick={handleSendTestEmail}
+            disabled={testEmailSending || !testEmailTo.trim()}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-[#0a1f44] text-white disabled:opacity-50 hover:bg-[#122c5c] transition-colors"
+          >
+            {testEmailSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+            {testEmailSending ? "Sending…" : "Send Test Email"}
+          </button>
+        </div>
+        {testEmailResult && (
+          <div
+            className={`mt-3 text-sm rounded-xl px-4 py-2.5 border ${
+              testEmailResult.ok
+                ? "bg-green-50 border-green-200 text-green-700"
+                : "bg-red-50 border-red-200 text-red-700"
+            }`}
+          >
+            {testEmailResult.text}
+          </div>
+        )}
+      </div>
 
       {/* Summary stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

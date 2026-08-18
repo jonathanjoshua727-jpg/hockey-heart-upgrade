@@ -94,7 +94,11 @@ export async function sendDonationConfirmation(
       );
       return false;
     }
-    logger.info({ reference: data.reference }, "Donation confirmation email sent");
+    const resendBody = (await response.json().catch(() => null)) as { id?: string } | null;
+    logger.info(
+      { reference: data.reference, resendId: resendBody?.id ?? null },
+      "Donation confirmation email sent",
+    );
     return true;
   } catch (err) {
     logger.error({ err, reference: data.reference }, "Failed to send donation confirmation email");
