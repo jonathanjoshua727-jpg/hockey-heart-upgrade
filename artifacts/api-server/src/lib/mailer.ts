@@ -1,4 +1,3 @@
-import { ReplitConnectors } from "@replit/connectors-sdk";
 import { logger } from "./logger";
 
 export interface DonationEmailData {
@@ -10,11 +9,11 @@ export interface DonationEmailData {
   date: string;
 }
 
-const connectors = new ReplitConnectors();
+const RESEND_API_URL = "https://api.resend.com/emails";
 
 const FROM_ADDRESS =
   process.env.DONATION_EMAIL_FROM ??
-  "Hockey Heart Initiative <onboarding@resend.dev>";
+  "Hockey Heart Initiative <donations@hockeyheartinitiative.com>";
 const REPLY_TO = "hockeyheartinitiative@gmail.com";
 
 function escapeHtml(s: string): string {
@@ -56,17 +55,29 @@ function buildHtml(data: DonationEmailData): string {
 }
 
 /**
- * Sends the donation confirmation email via Resend.
- * Returns true only when Resend accepted the email — callers use this to
- * keep the one-time `email_sent_at` claim, so no duplicates are possible.
+ * Sends the donation confirmation email via the Resend API, authenticated
+ * with the RESEND_API_KEY secret. Returns true only when Resend accepted the
+ * email — callers use this to keep the one-time `email_sent_at` claim, so no
+ * duplicates are possible.
  */
 export async function sendDonationConfirmation(
   data: DonationEmailData,
 ): Promise<boolean> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    logger.error(
+      { reference: data.reference },
+      "RESEND_API_KEY is not set; cannot send donation confirmation email",
+    );
+    return false;
+  }
   try {
-    const response = await connectors.proxy("resend", "/emails", {
+    const response = await fetch(RESEND_API_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
         from: FROM_ADDRESS,
         to: [data.to],
