@@ -1,5 +1,5 @@
 import { Shell } from "@/components/layout/Shell";
-import teamImage from "@assets/about-team.jpg";
+import teamImage from "@assets/generated_images/about-team-rink.jpg";
 import { Award, Heart, Shield, Users } from "lucide-react";
 
 export default function About() {

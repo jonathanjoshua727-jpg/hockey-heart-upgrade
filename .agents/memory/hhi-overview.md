@@ -22,3 +22,6 @@ description: Hockey Heart Initiative architecture, key files, and established de
 - New sections added: SupportersSection, LegalSection, ImpactSection
 
 **Why:** All state is localStorage-only for zero-backend simplicity. This must stay consistent — do not introduce API calls or databases to the frontend without a major architectural decision.
+
+## Seed-data migrations
+Stored localStorage content never re-reads seeds, so seed improvements need a migration. Use the version-gated one-time migration in contentStore (`hhi_content_migration_version`, `runContentMigration()`): bump the version and add steps there. Never merge/sync seeds on every read — that resurrects admin-deleted items and clobbers admin edits. New seed campaigns must be matched by id AND slug to avoid collisions with admin-created records.

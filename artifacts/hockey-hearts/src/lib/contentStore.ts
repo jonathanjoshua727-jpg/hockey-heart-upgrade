@@ -306,7 +306,7 @@ const SEED_ARTICLES: NewsArticle[] = [
     tags: ['Community', 'Programs', 'Ice Time', 'Detroit'],
     featured: true,
     published: true,
-    imageUrl: 'campaign-1',
+    imageUrl: 'campaign-ice-time',
   },
   {
     id: '4',
@@ -324,7 +324,7 @@ const SEED_ARTICLES: NewsArticle[] = [
     tags: ['Gala', 'Events', 'Fundraising', 'Milestone'],
     featured: false,
     published: true,
-    imageUrl: 'news-2',
+    imageUrl: 'campaign-gala',
   },
   {
     id: '5',
@@ -343,7 +343,7 @@ const SEED_ARTICLES: NewsArticle[] = [
     tags: ['Mental Health', 'Programs', 'Youth', 'Wellness'],
     featured: false,
     published: true,
-    imageUrl: 'campaign-2',
+    imageUrl: 'program-mental-health',
   },
   {
     id: '6',
@@ -402,7 +402,7 @@ const SEED_CAMPAIGNS: Campaign[] = [
     category: 'Ice Time & Training Support',
     featured: true,
     active: true,
-    imageUrl: 'campaign-2',
+    imageUrl: 'campaign-ice-time',
     content: `<p>Ice time is expensive. Even when a family can afford gear, the cost of rink hours — often $300–$500 per month — keeps youth players off the ice.</p>
 <p>The Community Rink Access Fund subsidizes practice sessions for youth leagues in neighborhoods with median household incomes below $50,000.</p>
 <p>Funds are distributed directly to partner rinks in exchange for guaranteed hours reserved for qualifying youth leagues.</p>`,
@@ -419,7 +419,7 @@ const SEED_CAMPAIGNS: Campaign[] = [
     category: 'Youth Hockey Development',
     featured: false,
     active: true,
-    imageUrl: 'about-team',
+    imageUrl: 'campaign-coaching',
   },
   {
     id: '4',
@@ -433,7 +433,7 @@ const SEED_CAMPAIGNS: Campaign[] = [
     category: 'Hockey Education',
     featured: false,
     active: true,
-    imageUrl: 'campaign-1',
+    imageUrl: 'campaign-education',
   },
   {
     id: '5',
@@ -447,7 +447,7 @@ const SEED_CAMPAIGNS: Campaign[] = [
     category: 'Community Outreach',
     featured: false,
     active: true,
-    imageUrl: 'news-2',
+    imageUrl: 'campaign-outreach',
   },
   {
     id: '6',
@@ -461,7 +461,58 @@ const SEED_CAMPAIGNS: Campaign[] = [
     category: 'General Fund',
     featured: true,
     active: true,
-    imageUrl: 'news-1',
+    imageUrl: 'campaign-gala',
+  },
+  {
+    id: '7',
+    slug: 'hockey-family-emergency-support',
+    title: 'Hockey Family Emergency Support',
+    description:
+      'Provide emergency financial assistance to hockey families facing sudden hardship — so an injury, job loss, or crisis never forces a child out of the game.',
+    goal: 60000,
+    raised: 0,
+    deadline: '2027-06-30',
+    category: 'Family Support',
+    featured: false,
+    active: true,
+    imageUrl: 'campaign-family',
+    content: `<p>When a family hits a crisis — a medical emergency, a job loss, an unexpected hardship — hockey is often the first thing a child has to give up.</p>
+<p>The Hockey Family Emergency Support fund provides rapid, confidential assistance covering registration fees, gear replacement, and travel costs so young players can stay on the ice while their families get back on their feet.</p>
+<p>Requests are reviewed within 72 hours and support is distributed directly through partner leagues and rinks.</p>`,
+  },
+  {
+    id: '8',
+    slug: 'girls-women-in-hockey',
+    title: 'Girls & Women in Hockey Initiative',
+    description:
+      'Advance gender equity in the game by funding girls-only programs, female coaching pathways, and mentorship that keeps girls playing and leading.',
+    goal: 90000,
+    raised: 0,
+    deadline: '2027-08-31',
+    category: 'Gender Equity',
+    featured: false,
+    active: true,
+    imageUrl: 'campaign-girls-women',
+    content: `<p>Girls leave hockey at more than twice the rate of boys — not for lack of love of the game, but for lack of programs, role models, and opportunity.</p>
+<p>The Girls & Women in Hockey Initiative funds girls-only learn-to-play sessions, scholarships for female players, and a coaching pathway that trains women to lead behind the bench.</p>
+<p>Your gift builds a game where every girl can see a future for herself on the ice.</p>`,
+  },
+  {
+    id: '9',
+    slug: 'community-development-fund',
+    title: 'Hockey Community Development Fund',
+    description:
+      'Invest in long-term hockey infrastructure — local leagues, volunteer networks, and neighborhood rinks — so communities can sustain the game for generations.',
+    goal: 120000,
+    raised: 0,
+    deadline: '2027-12-31',
+    category: 'Community Development',
+    featured: false,
+    active: true,
+    imageUrl: 'campaign-community',
+    content: `<p>Lasting change doesn't come from a single season — it comes from communities that own their hockey programs.</p>
+<p>The Hockey Community Development Fund makes multi-year investments in local league startups, volunteer and official training, and neighborhood rink improvements in underserved areas.</p>
+<p>Every dollar builds infrastructure that keeps kids playing long after the campaign ends.</p>`,
   },
 ];
 
@@ -510,7 +561,7 @@ const SEED_PROGRAMS: Program[] = [
     icon: '⛸️',
     active: true,
     order: 1,
-    imageUrl: 'campaign-1',
+    imageUrl: 'campaign-ice-time',
   },
   {
     id: '3',
@@ -521,7 +572,7 @@ const SEED_PROGRAMS: Program[] = [
     icon: '🎓',
     active: true,
     order: 2,
-    imageUrl: 'about-team',
+    imageUrl: 'campaign-coaching',
   },
   {
     id: '4',
@@ -532,7 +583,7 @@ const SEED_PROGRAMS: Program[] = [
     icon: '🧠',
     active: true,
     order: 3,
-    imageUrl: 'campaign-2',
+    imageUrl: 'program-mental-health',
   },
   {
     id: '5',
@@ -543,7 +594,7 @@ const SEED_PROGRAMS: Program[] = [
     icon: '🚐',
     active: true,
     order: 4,
-    imageUrl: 'news-2',
+    imageUrl: 'campaign-outreach',
   },
   {
     id: '6',
@@ -554,7 +605,7 @@ const SEED_PROGRAMS: Program[] = [
     icon: '📚',
     active: true,
     order: 5,
-    imageUrl: 'campaign-1',
+    imageUrl: 'campaign-education',
   },
 ];
 
@@ -751,7 +802,76 @@ const SEED_DONATION_CAUSES: DonationCause[] = [
 ];
 
 // ── Articles ──────────────────────────────────────────────────────────────
+// One-time content migration (version-gated so it never re-runs):
+// refreshes seed-item images that still use old registry keys and merges
+// newly added seed campaigns. Running once means admin deletions and
+// later admin edits are never clobbered by subsequent reads.
+const MIGRATION_KEY = 'hhi_content_migration_version';
+const MIGRATION_VERSION = 2;
+
+function migrationDone(): boolean {
+  return read<number>(MIGRATION_KEY, 0) >= MIGRATION_VERSION;
+}
+
+function markMigrationDone() {
+  write(MIGRATION_KEY, MIGRATION_VERSION);
+}
+
+function syncSeedImages<T extends { id: string; imageUrl?: string }>(
+  stored: T[],
+  seeds: T[]
+): { items: T[]; changed: boolean } {
+  let changed = false;
+  const items = stored.map((item) => {
+    const seed = seeds.find((s) => s.id === item.id);
+    if (
+      seed?.imageUrl &&
+      item.imageUrl &&
+      item.imageUrl !== seed.imageUrl &&
+      !item.imageUrl.startsWith('http') &&
+      !item.imageUrl.startsWith('data:') &&
+      !item.imageUrl.startsWith('/')
+    ) {
+      changed = true;
+      return { ...item, imageUrl: seed.imageUrl };
+    }
+    return item;
+  });
+  return { items, changed };
+}
+
+/** Runs the one-time migration across all affected stores, then marks done. */
+function runContentMigration() {
+  if (migrationDone()) return;
+  // Articles: refresh stale seed image keys.
+  const articles = read<NewsArticle[] | null>(KEYS.articles, null);
+  if (articles) {
+    const { items, changed } = syncSeedImages(articles, SEED_ARTICLES);
+    if (changed) write(KEYS.articles, items);
+  }
+  // Programs: refresh stale seed image keys.
+  const programs = read<Program[] | null>(KEYS.programs, null);
+  if (programs) {
+    const { items, changed } = syncSeedImages(programs, SEED_PROGRAMS);
+    if (changed) write(KEYS.programs, items);
+  }
+  // Campaigns: refresh stale seed image keys and merge new seed campaigns
+  // (matched by id AND slug so an unrelated admin record is never touched).
+  const campaigns = read<Campaign[] | null>(KEYS.campaigns, null);
+  if (campaigns) {
+    const { items, changed } = syncSeedImages(campaigns, SEED_CAMPAIGNS);
+    const missing = SEED_CAMPAIGNS.filter(
+      (s) => !items.some((c) => c.id === s.id || c.slug === s.slug)
+    );
+    if (changed || missing.length > 0) {
+      write(KEYS.campaigns, [...items, ...missing]);
+    }
+  }
+  markMigrationDone();
+}
+
 export function getArticles(): NewsArticle[] {
+  runContentMigration();
   const stored = read<NewsArticle[] | null>(KEYS.articles, null);
   if (!stored) {
     write(KEYS.articles, SEED_ARTICLES);
@@ -784,6 +904,7 @@ export function deleteArticle(id: string) {
 
 // ── Campaigns ─────────────────────────────────────────────────────────────
 export function getCampaigns(): Campaign[] {
+  runContentMigration();
   const stored = read<Campaign[] | null>(KEYS.campaigns, null);
   if (!stored) {
     write(KEYS.campaigns, SEED_CAMPAIGNS);
@@ -876,6 +997,7 @@ export function logActivity(action: string, section: string, detail: string) {
 
 // ── Programs ──────────────────────────────────────────────────────────────
 export function getPrograms(): Program[] {
+  runContentMigration();
   const stored = read<Program[] | null>(KEYS.programs, null);
   if (!stored) {
     write(KEYS.programs, SEED_PROGRAMS);
