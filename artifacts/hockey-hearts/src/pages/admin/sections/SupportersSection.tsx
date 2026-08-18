@@ -1,16 +1,12 @@
 import { useState, useEffect } from "react";
 import { logActivity, type Supporter } from "@/lib/contentStore";
+import { resolveImage } from "@/lib/imageRegistry";
 import { Plus, Pencil, Trash2, Save, X, ArrowLeft, ToggleLeft, ToggleRight, GripVertical, Star } from "lucide-react";
 
 const SUPPORTERS_KEY = 'hhi_supporters';
 
 const SEED_SUPPORTERS: Supporter[] = [
-  { id: 's1', name: 'Andrei Svechnikov', role: 'Center · Lead Ambassador', description: 'NHL All-Star and Carolina Hurricanes star Andrei Svechnikov joined as HHI Lead Ambassador in 2026, pledging $200,000 to the equipment grant fund and personally mentoring youth players across North America.', number: '#37', link: 'https://www.nhl.com/hurricanes', active: true, order: 0, isAmbassador: true },
-  { id: 's2', name: 'Marcus Kowalczyk', role: 'Defenseman · Ambassador', description: 'A veteran defenseman known for his commitment to grassroots hockey, Marcus channels his league experience into youth coaching certification workshops across the Midwest.', number: '#4', active: true, order: 1 },
-  { id: 's3', name: 'Tyler Oduya', role: 'Right Wing · Ambassador', description: 'Tyler advocates for greater inclusion and diversity in hockey, partnering with HHI to bring the game to underserved communities across North America.', number: '#21', active: true, order: 2 },
-  { id: 's4', name: 'Viktor Petrov', role: 'Goaltender · Ambassador', description: 'Viktor credits hockey with giving him discipline and purpose. He now funds rink scholarships that give youth their first on-ice experience.', number: '#31', active: true, order: 3 },
-  { id: 's5', name: 'Jenna McAllister', role: 'Forward · Girls & Women in Hockey Ambassador', description: "A pioneer in women's professional hockey, Jenna champions gender equity and leads HHI's Girls & Women in Hockey Initiative, supporting over 500 young female players annually.", number: '#18', active: true, order: 4 },
-  { id: 's6', name: 'Darnell Baptiste', role: 'Center · Community Outreach Ambassador', description: 'Darnell grew up in a community with no rink access. He now funds mobile rink programs in underserved neighborhoods, reaching communities that traditional programs cannot.', number: '#9', active: true, order: 5 },
+  { id: 's1', name: 'Andrei Svechnikov', role: 'Carolina Hurricanes · #37 · Lead Ambassador', description: 'NHL All-Star and Carolina Hurricanes star Andrei Svechnikov joined as HHI Lead Ambassador in 2026, pledging $200,000 to the equipment grant fund and personally mentoring youth players across North America.', number: '#37', link: 'https://www.nhl.com/hurricanes', imageUrl: 'ambassador-svechnikov', active: true, order: 0, isAmbassador: true },
 ];
 
 export function getSupporters(): Supporter[] {
@@ -171,7 +167,7 @@ export function SupportersSection() {
             {/* Avatar */}
             <div className="w-14 h-14 rounded-full bg-[#0a1f44] flex items-center justify-center shrink-0 overflow-hidden">
               {s.imageUrl ? (
-                <img src={s.imageUrl} alt={s.name} className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                <img src={resolveImage(s.imageUrl)} alt={s.name} className="w-full h-full object-cover" onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               ) : (
                 <span className="text-white font-serif font-bold text-lg">{s.number ?? s.name.charAt(0)}</span>
               )}

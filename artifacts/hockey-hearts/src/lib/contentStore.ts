@@ -807,7 +807,7 @@ const SEED_DONATION_CAUSES: DonationCause[] = [
 // newly added seed campaigns. Running once means admin deletions and
 // later admin edits are never clobbered by subsequent reads.
 const MIGRATION_KEY = 'hhi_content_migration_version';
-const MIGRATION_VERSION = 2;
+const MIGRATION_VERSION = 3;
 
 function migrationDone(): boolean {
   return read<number>(MIGRATION_KEY, 0) >= MIGRATION_VERSION;
@@ -865,6 +865,30 @@ function runContentMigration() {
     );
     if (changed || missing.length > 0) {
       write(KEYS.campaigns, [...items, ...missing]);
+    }
+  }
+  // Supporters (v3): Andrei Svechnikov is the only seeded ambassador now.
+  // Remove the old fictional seeded supporters (s2–s6); admin-created
+  // supporters use UUID ids and are untouched. Refresh s1's seed details
+  // unless the admin has set a custom image URL.
+  const supporters = read<Supporter[] | null>(KEYS.supporters, null);
+  if (supporters) {
+    const fictionalSeedIds = ['s2', 's3', 's4', 's5', 's6'];
+    let updated = supporters.filter((s) => !fictionalSeedIds.includes(s.id));
+    const seedS1 = SEED_SUPPORTERS_PUBLIC[0];
+    updated = updated.map((s) => {
+      if (s.id !== 's1') return s;
+      const hasCustomImage =
+        s.imageUrl &&
+        (s.imageUrl.startsWith('http') || s.imageUrl.startsWith('data:'));
+      return {
+        ...s,
+        role: seedS1.role,
+        imageUrl: hasCustomImage ? s.imageUrl : seedS1.imageUrl,
+      };
+    });
+    if (updated.length !== supporters.length || updated.some((s, i) => s !== supporters[i])) {
+      write(KEYS.supporters, updated);
     }
   }
   markMigrationDone();
@@ -1145,12 +1169,7 @@ export function savePageContent(page: PageContent) {
 
 // ── Supporters (public read; full management in SupportersSection) ─────────
 const SEED_SUPPORTERS_PUBLIC: Supporter[] = [
-  { id: 's1', name: 'Andrei Svechnikov', role: 'Center · Lead Ambassador', description: 'NHL All-Star and Carolina Hurricanes star Andrei Svechnikov joined as HHI Lead Ambassador in 2026, pledging $200,000 to the equipment grant fund and personally mentoring youth players across North America.', number: '#37', link: 'https://www.nhl.com/hurricanes', active: true, order: 0, isAmbassador: true },
-  { id: 's2', name: 'Marcus Kowalczyk', role: 'Defenseman · Ambassador', description: 'A veteran defenseman known for his commitment to grassroots hockey, Marcus channels his league experience into youth coaching certification workshops across the Midwest.', number: '#4', active: true, order: 1 },
-  { id: 's3', name: 'Tyler Oduya', role: 'Right Wing · Ambassador', description: 'Tyler advocates for greater inclusion and diversity in hockey, partnering with HHI to bring the game to underserved communities across North America.', number: '#21', active: true, order: 2 },
-  { id: 's4', name: 'Viktor Petrov', role: 'Goaltender · Ambassador', description: 'Viktor credits hockey with giving him discipline and purpose. He now funds rink scholarships that give youth their first on-ice experience.', number: '#31', active: true, order: 3 },
-  { id: 's5', name: 'Jenna McAllister', role: 'Forward · Girls & Women in Hockey', description: "A pioneer in women's professional hockey, Jenna champions gender equity and leads HHI's Girls & Women in Hockey Initiative.", number: '#18', active: true, order: 4 },
-  { id: 's6', name: 'Darnell Baptiste', role: 'Center · Community Outreach', description: 'Darnell grew up in a community with no rink access. He now funds mobile rink programs in underserved neighborhoods.', number: '#9', active: true, order: 5 },
+  { id: 's1', name: 'Andrei Svechnikov', role: 'Carolina Hurricanes · #37 · Lead Ambassador', description: 'NHL All-Star and Carolina Hurricanes star Andrei Svechnikov joined as HHI Lead Ambassador in 2026, pledging $200,000 to the equipment grant fund and personally mentoring youth players across North America.', number: '#37', link: 'https://www.nhl.com/hurricanes', imageUrl: 'ambassador-svechnikov', active: true, order: 0, isAmbassador: true },
 ];
 
 export function getSupporters(): Supporter[] {

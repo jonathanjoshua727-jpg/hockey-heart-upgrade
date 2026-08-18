@@ -1,8 +1,11 @@
 import { Shell } from "@/components/layout/Shell";
 import teamImage from "@assets/generated_images/about-team-rink.jpg";
 import { Award, Heart, Shield, Users } from "lucide-react";
+import { getActiveSupporters } from "@/lib/contentStore";
+import { resolveImage } from "@/lib/imageRegistry";
 
 export default function About() {
+  const ambassadors = getActiveSupporters();
   const values = [
     {
       icon: Heart,
@@ -97,40 +100,24 @@ export default function About() {
               These professional athletes lend their voices, time, and resources to champion our mission every season.
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-5xl mx-auto">
-            {[
-              {
-                name: "Andrei Svechnikov",
-                number: "#17",
-                role: "Center / Lead Ambassador",
-                bio: "A two-time NHL All-Star and founding ambassador of Hockey Heart Initiative. Andrei grew up in a low-income household and credits a local equipment grant for starting his career. He has personally donated over $200,000 to our gear fund.",
-              },
-              {
-                name: "Marcus Kowalczyk",
-                number: "#4",
-                role: "Defenseman",
-                bio: "Marcus runs our annual off-season skate clinic for kids ages 6–12, donating his time every July. His partnership helped us reach three new communities in 2025.",
-              },
-              {
-                name: "Tyler Oduya",
-                number: "#21",
-                role: "Right Wing",
-                bio: "Tyler champions our children's health programs, having volunteered at over 30 mobile clinic events. He advocates for pediatric health access at every public appearance.",
-              },
-              {
-                name: "Viktor Petrov",
-                number: "#31",
-                role: "Goaltender",
-                bio: "Viktor co-hosts our annual Winter Gala, which has raised over $1.2 million since 2019. Off the ice, he mentors youth coaches through our certification grant program.",
-              },
-            ].map((player) => (
-              <div key={player.name} className="bg-white/5 border border-white/10 rounded-3xl p-8 flex flex-col items-center text-center hover:bg-white/10 transition-colors">
-                <div className="w-16 h-16 rounded-full bg-secondary/20 border-2 border-secondary/50 flex items-center justify-center mb-5">
-                  <span className="font-serif text-xl font-bold text-secondary">{player.number}</span>
+          <div className="flex flex-wrap justify-center gap-8 max-w-5xl mx-auto">
+            {ambassadors.map((player) => (
+              <div key={player.id} className="w-full md:w-[calc(50%-1rem)] lg:w-[calc(25%-1.5rem)] min-w-[240px] max-w-sm bg-white/5 border border-white/10 rounded-3xl p-8 flex flex-col items-center text-center hover:bg-white/10 transition-colors">
+                <div className="w-16 h-16 rounded-full bg-secondary/20 border-2 border-secondary/50 flex items-center justify-center mb-5 overflow-hidden">
+                  {player.imageUrl ? (
+                    <img
+                      src={resolveImage(player.imageUrl)}
+                      alt={player.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  ) : (
+                    <span className="font-serif text-xl font-bold text-secondary">{player.number}</span>
+                  )}
                 </div>
                 <h3 className="font-bold text-lg mb-1">{player.name}</h3>
                 <p className="text-secondary text-xs font-semibold uppercase tracking-wider mb-4">{player.role}</p>
-                <p className="text-primary-foreground/65 text-sm leading-relaxed">{player.bio}</p>
+                <p className="text-primary-foreground/65 text-sm leading-relaxed">{player.description}</p>
               </div>
             ))}
           </div>

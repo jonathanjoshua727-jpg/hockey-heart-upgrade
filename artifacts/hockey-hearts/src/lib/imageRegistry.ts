@@ -21,6 +21,7 @@ import campIceTime from '@assets/generated_images/campaign-ice-time.jpg';
 import campEducation from '@assets/generated_images/campaign-education.jpg';
 import teamRink from '@assets/generated_images/about-team-rink.jpg';
 import programMentalHealth from '@assets/generated_images/program-mental-health.jpg';
+import ambassadorSvechnikov from '@assets/generated_images/ambassador-svechnikov.jpg';
 
 const REGISTRY: Record<string, string> = {
   'campaign-1': camp1,
@@ -42,6 +43,7 @@ const REGISTRY: Record<string, string> = {
   'campaign-education': campEducation,
   'team-rink': teamRink,
   'program-mental-health': programMentalHealth,
+  'ambassador-svechnikov': ambassadorSvechnikov,
 };
 
 /** Resolve an image key (or a direct URL / data URI) to a displayable src. */

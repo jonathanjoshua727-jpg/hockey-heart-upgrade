@@ -24,7 +24,7 @@ function SupporterAvatar({ player }: { player: Supporter }) {
       <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-secondary/20 border-2 border-secondary/40 flex items-center justify-center group-hover:border-secondary transition-colors overflow-hidden">
         {player.imageUrl ? (
           <img
-            src={player.imageUrl}
+            src={resolveImage(player.imageUrl)}
             alt={player.name}
             className="w-full h-full object-cover"
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
