@@ -13,3 +13,11 @@ description: Server-side donation verification architecture, admin auth model, a
 - Admin UI: DonationsSection merges server-verified donations (shield icon, no delete) with local crypto transactions (manual, still localStorage). AnalyticsSection merges server stats (byCause/byMethod/byCurrency) with local crypto.
 - Crypto donations remain frontend/localStorage only (off-gateway manual verification).
 - Paystack webhook URL must be configured in the Paystack dashboard to `<prod-domain>/api/paystack/webhook` after publishing.
+
+## Production-readiness hardening (Aug 2026)
+- Known program ids get canonical labels forced server-side on initialize (CANONICAL_CAUSES in donations routes); unknown ids accepted for admin-configured causes.
+- Public initialize/verify routes have in-memory per-IP rate limits; `trust proxy` is set to 1 (Replit proxy hop) so req.ip is the real client. Never set trust proxy to `true`.
+- CORS is disabled unless CORS_ORIGIN env is set (same-origin path routing makes it unnecessary).
+- Refund webhook updates are conditional on status != 'refunded' (duplicate refund events can't overwrite refundedAt).
+- Amount policy is deliberate: paid must be >= pledged in same currency (covers Paystack fee-pass-through); mismatch/short-pay is marked failed, no email.
+- **BLOCKER for live donations: the Paystack account (TEST key) does not support USD** — /charge returns "Currency not supported by merchant". Site is USD-only server-side. User must enable USD on their Paystack account (or the site must switch currency) before real donations work.

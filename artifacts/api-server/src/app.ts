@@ -6,6 +6,12 @@ import { logger } from "./lib/logger";
 
 const app: Express = express();
 
+// The app is always reached through Replit's reverse proxy (one hop), both in
+// dev preview and in production deployments. Trust exactly that hop so
+// req.ip reflects the real client IP for rate limiting — never `true`, which
+// would let clients spoof X-Forwarded-For.
+app.set("trust proxy", 1);
+
 app.use(
   pinoHttp({
     logger,
@@ -25,7 +31,11 @@ app.use(
     },
   }),
 );
-app.use(cors());
+// Same-origin by default (frontend and API share the domain via path
+// routing). Cross-origin access must be explicitly enabled via CORS_ORIGIN.
+if (process.env.CORS_ORIGIN) {
+  app.use(cors({ origin: process.env.CORS_ORIGIN.split(",") }));
+}
 app.use(
   express.json({
     verify: (req, _res, buf) => {

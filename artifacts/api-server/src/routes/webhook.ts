@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request } from "express";
 import crypto from "node:crypto";
 import { db, donationsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { getPaystackSecret } from "../lib/paystack";
 import { verifyAndSettle } from "./donations";
 import { logger } from "../lib/logger";
@@ -57,7 +57,14 @@ router.post("/paystack/webhook", async (req: RawBodyRequest, res) => {
             refundReason: event.data?.merchant_note ?? "Refund processed via Paystack",
             updatedAt: now,
           })
-          .where(eq(donationsTable.reference, reference));
+          .where(
+            and(
+              eq(donationsTable.reference, reference),
+              // Idempotent: never re-stamp an already-refunded record, so a
+              // duplicate refund event can't overwrite refundedAt/reason.
+              ne(donationsTable.status, "refunded"),
+            ),
+          );
       }
     }
   } catch (err) {

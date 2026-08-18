@@ -11,6 +11,53 @@ const router: IRouter = Router();
 
 const MIN_AMOUNT_USD = 50;
 
+// Canonical seeded programs. If a donation targets a known program id, the
+// label is forced to the canonical one server-side so a tampered client
+// cannot mislabel an allocation. Unknown ids are still accepted (admins can
+// configure additional programs), but their labels are stored as provided.
+const CANONICAL_CAUSES: Record<string, string> = {
+  general: "Where Needed Most",
+  "winter-equipment": "Winter Equipment Drive 2026",
+  "rink-access": "Community Rink Access Fund",
+  "coaching-cert": "Youth Coaching Certification Program",
+  education: "Hockey Education Initiative",
+  "mobile-outreach": "Community Outreach Mobile Program",
+  "family-support": "Hockey Family Emergency Support",
+  "girls-women": "Girls & Women in Hockey Initiative",
+  "community-dev": "Hockey Community Development Fund",
+};
+
+// ── Minimal in-memory rate limiter for public donation routes ─────────────
+function makeRateLimiter(maxHits: number, windowMs: number) {
+  const hits = new Map<string, { count: number; resetAt: number }>();
+  return function rateLimit(
+    req: Parameters<Parameters<IRouter["post"]>[1]>[0],
+    res: Parameters<Parameters<IRouter["post"]>[1]>[1],
+    next: () => void,
+  ) {
+    const ip = req.ip ?? "unknown";
+    const nowMs = Date.now();
+    const entry = hits.get(ip);
+    if (!entry || nowMs > entry.resetAt) {
+      hits.set(ip, { count: 1, resetAt: nowMs + windowMs });
+      if (hits.size > 10_000) {
+        for (const [k, v] of hits) if (nowMs > v.resetAt) hits.delete(k);
+      }
+      next();
+      return;
+    }
+    entry.count += 1;
+    if (entry.count > maxHits) {
+      res.status(429).json({ error: "Too many requests. Please try again shortly." });
+      return;
+    }
+    next();
+  };
+}
+
+const initializeLimiter = makeRateLimiter(15, 10 * 60 * 1000);
+const verifyLimiter = makeRateLimiter(60, 10 * 60 * 1000);
+
 const initializeSchema = z.object({
   amount: z.number().positive().max(1_000_000),
   currency: z.literal("USD"),
@@ -45,7 +92,7 @@ function publicDonation(d: Donation) {
 }
 
 // ── Initialize: create a pending record server-side ───────────────────────
-router.post("/donations/initialize", async (req, res) => {
+router.post("/donations/initialize", initializeLimiter, async (req, res) => {
   const parsed = initializeSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid donation details." });
@@ -68,7 +115,7 @@ router.post("/donations/initialize", async (req, res) => {
     donorEmail: input.email.toLowerCase(),
     anonymous: input.anonymous,
     causeId: input.causeId,
-    causeLabel: input.causeLabel,
+    causeLabel: CANONICAL_CAUSES[input.causeId] ?? input.causeLabel,
     message: input.message || null,
     method: input.method,
   });
@@ -244,7 +291,7 @@ export async function verifyAndSettle(
 }
 
 // ── Verify: called by the frontend after Paystack popup callback ──────────
-router.post("/donations/verify", async (req, res) => {
+router.post("/donations/verify", verifyLimiter, async (req, res) => {
   const parsed = z.object({ reference: z.string().min(1).max(200) }).safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Missing reference." });

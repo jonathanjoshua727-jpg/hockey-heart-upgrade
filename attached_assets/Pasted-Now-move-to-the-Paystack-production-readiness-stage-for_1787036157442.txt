@@ -1,0 +1,110 @@
+Now move to the Paystack production-readiness stage for the Hockey Heart Initiative.
+
+The Resend email integration and test email are working. Do NOT modify the existing Resend integration, DNS records, verified sending domain, or email functionality.
+
+I need you to fully prepare and verify the donation system for production.
+
+PAYSTACK REQUIREMENTS:
+
+1. Use Paystack for the actual card/payment processing behind the scenes.
+2. Keep all Paystack secret/security keys strictly server-side. Never expose a secret key in frontend code, client-side JavaScript, public environment variables, GitHub, or the browser.
+3. Use environment variables for all Paystack credentials.
+4. Do not hard-code any Paystack secret key.
+5. The donation amount must be validated server-side before creating or initializing a transaction.
+6. Maintain the existing $50 minimum donation requirement.
+7. Support the existing worldwide donation flow and the payment methods already designed for the website.
+8. Do not remove or redesign the existing donation experience unless required to fix functionality.
+
+PAYMENT VERIFICATION:
+
+9. Do not treat a redirect back to the website as proof that a payment succeeded.
+10. Verify successful transactions server-side using Paystack’s transaction verification mechanism.
+11. Make sure the verified transaction amount matches the intended donation amount.
+12. Make sure the transaction currency and status are validated.
+13. Prevent duplicate donation records if the same transaction is processed more than once.
+14. Store only the information actually required for the donation record. Never store raw card details or sensitive payment credentials.
+
+WEBHOOK:
+
+15. Implement or verify a secure Paystack webhook for payment events.
+16. Verify the webhook signature according to Paystack’s requirements before processing the event.
+17. Make webhook processing idempotent so the same event cannot create duplicate donations.
+18. Make sure a verified successful payment updates the donation record correctly.
+
+DONATION RECORD:
+
+19. For every successfully verified donation, record the relevant transaction/reference, amount, currency, date/time, donor information that the donor voluntarily provided, and the selected donation program if applicable.
+20. Make sure donations can be associated with the correct Hockey Heart Initiative program.
+21. Do not mark a donation as successful until payment has actually been verified.
+
+PROGRAM ALLOCATION:
+
+Make sure the donation system supports directing/allocating donations to these programs:
+
+* Winter Equipment Drive 2026
+* Community Rink Access Fund
+* Youth Coaching Certification Program
+* Hockey Education Initiative
+* Community Outreach Mobile Program
+* Hockey Family Emergency Support
+* Girls & Women in Hockey Initiative
+* Any other officially configured program already present in the website
+
+DONOR EXPERIENCE:
+
+22. After a verified successful donation, show the donor a clear thank-you/success page.
+23. Do not require the donor to submit the same information again after payment.
+24. Trigger the existing Resend confirmation email after the payment is successfully verified.
+25. Send an appropriate admin notification for successful donations if that functionality is already configured.
+26. Make sure emails are not triggered for failed, abandoned, cancelled, or unverified payments.
+
+ADMIN DASHBOARD:
+
+27. Make sure the admin dashboard can display verified donations.
+28. Clearly distinguish successful, pending, failed, and cancelled transactions.
+29. Show the Paystack transaction/reference ID for successful transactions.
+30. Do not expose Paystack secret keys anywhere in the dashboard.
+
+TESTING:
+
+31. First verify the system safely in Paystack TEST mode using test credentials.
+32. Test:
+
+* Successful payment
+* Failed payment
+* Cancelled/abandoned payment
+* Duplicate webhook/event
+* Invalid transaction/reference
+* Amount mismatch
+* Donation below the $50 minimum
+
+33. Confirm that only genuinely verified successful payments become successful donations.
+34. Confirm the thank-you page and Resend confirmation email are triggered only after successful verification.
+
+PRODUCTION CHECK:
+
+35. Once all test-mode checks pass, make the code production-ready so the administrator can replace the test credentials with the real Paystack production credentials through environment variables.
+36. Do not ask me to paste a secret key into source code or chat.
+37. Clearly tell me which environment variable names need production values.
+38. Do not switch to production automatically without the administrator’s explicit action.
+
+SECURITY:
+
+39. Review the donation API routes for authentication, authorization, input validation, rate limiting where appropriate, and protection against manipulation of donation amounts or program selections.
+40. Do not expose private environment variables through API responses, logs, frontend code, or error messages.
+
+IMPORTANT:
+
+Do not modify the existing Resend setup, domain/DNS configuration, website design, admin authentication, or unrelated functionality.
+
+After completing the work, give me a concise production-readiness report showing:
+
+* What Paystack functionality is already working
+* What was fixed
+* What was tested
+* Whether webhook verification works
+* Whether donation records are correctly created
+* Whether Resend confirmation emails trigger correctly
+* Which environment variables the administrator must provide
+* Whether the system is ready to switch from Paystack TEST mode to LIVE mode
+* Any remaining issue that must be resolved before accepting real donations
