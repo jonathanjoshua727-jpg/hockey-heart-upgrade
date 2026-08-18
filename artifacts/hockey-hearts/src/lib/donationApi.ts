@@ -66,8 +66,8 @@ export interface DonationStats {
 
 async function jsonFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
     ...init,
+    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
   });
   const body = (await res.json().catch(() => ({}))) as T & { error?: string };
   if (!res.ok) {
