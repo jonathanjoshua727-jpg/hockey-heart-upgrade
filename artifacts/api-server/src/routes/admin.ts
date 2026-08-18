@@ -5,7 +5,7 @@ import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import crypto from "node:crypto";
 import { issueAdminToken, requireAdmin } from "../lib/adminToken";
 import { logger } from "../lib/logger";
-import { sendDonationConfirmation } from "../lib/mailer";
+import { sendDonationConfirmationDetailed } from "../lib/mailer";
 
 const router: IRouter = Router();
 
@@ -242,34 +242,43 @@ router.get("/admin/donations/stats", requireAdmin, async (_req, res) => {
 
 // ── Send a test donation confirmation email ───────────────────────────────
 router.post("/admin/test-email", requireAdmin, async (req, res) => {
+  // Tolerant parsing: accept `to` as a string, trim whitespace, then validate.
   const parsed = z
-    .object({ to: z.string().email().max(320) })
+    .object({ to: z.string().trim().max(320).pipe(z.email()) })
     .safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Provide a valid `to` email address." });
+    const received =
+      typeof (req.body as { to?: unknown })?.to === "string"
+        ? String((req.body as { to: string }).to).slice(0, 100)
+        : undefined;
+    logger.warn({ received }, "Test email request had an invalid recipient");
+    res.status(400).json({
+      error: received
+        ? `"${received}" is not a valid email address. Use a plain address like name@example.com.`
+        : "Missing recipient — send a JSON body like { \"to\": \"name@example.com\" }.",
+    });
     return;
   }
   const to = parsed.data.to;
   const testRef = "HHI-TEST-" + Date.now().toString(36).toUpperCase();
-  const sent = await sendDonationConfirmation({
+  const result = await sendDonationConfirmationDetailed({
     to,
     donorName: "Test Donor",
     amountUsd: 100,
     causeLabel: "General Support",
     reference: testRef,
     date: new Date().toISOString(),
-  }).catch(() => false);
+  }).catch(() => ({ ok: false as const, error: "Unexpected error while sending." }));
 
-  if (sent) {
-    logger.info({ to, reference: testRef }, "Test donation confirmation email sent by admin");
+  if (result.ok) {
+    logger.info(
+      { to, reference: testRef, resendId: (result as { id?: string }).id ?? null },
+      "Test donation confirmation email sent by admin",
+    );
     res.json({ ok: true, message: `Test email sent to ${to} (reference: ${testRef})` });
   } else {
-    logger.warn({ to }, "Test email send failed — check RESEND_API_KEY and domain verification");
-    res.status(502).json({
-      ok: false,
-      error:
-        "Resend rejected the email. Check that RESEND_API_KEY is set and hockeyheartinitiative.com is verified in the Resend dashboard.",
-    });
+    logger.warn({ to, error: result.error }, "Test email send failed");
+    res.status(502).json({ ok: false, error: result.error ?? "Sending failed." });
   }
 });
 

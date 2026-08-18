@@ -55,21 +55,30 @@ function buildHtml(data: DonationEmailData): string {
 }
 
 /**
- * Sends the donation confirmation email via the Resend API, authenticated
- * with the RESEND_API_KEY secret. Returns true only when Resend accepted the
- * email — callers use this to keep the one-time `email_sent_at` claim, so no
- * duplicates are possible.
+ * Detailed send result. `error` contains the Resend error message (safe to
+ * surface — it never includes the API key) for debugging/admin display.
  */
-export async function sendDonationConfirmation(
+export interface SendResult {
+  ok: boolean;
+  id?: string;
+  status?: number;
+  error?: string;
+}
+
+/**
+ * Sends the donation confirmation email via the Resend API, authenticated
+ * with the RESEND_API_KEY secret. Returns the detailed Resend outcome.
+ */
+export async function sendDonationConfirmationDetailed(
   data: DonationEmailData,
-): Promise<boolean> {
+): Promise<SendResult> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     logger.error(
       { reference: data.reference },
       "RESEND_API_KEY is not set; cannot send donation confirmation email",
     );
-    return false;
+    return { ok: false, error: "Email service is not configured (missing API key)." };
   }
   try {
     const response = await fetch(RESEND_API_URL, {
@@ -92,16 +101,35 @@ export async function sendDonationConfirmation(
         { reference: data.reference, status: response.status, body: text.slice(0, 300) },
         "Resend rejected donation confirmation email",
       );
-      return false;
+      // Resend error bodies look like {"statusCode":403,"name":"...","message":"..."}
+      let message = `Resend returned HTTP ${response.status}.`;
+      try {
+        const parsed = JSON.parse(text) as { message?: string; name?: string };
+        if (parsed?.message) message = `Resend error (${response.status}): ${parsed.message}`;
+      } catch {
+        /* keep generic message */
+      }
+      return { ok: false, status: response.status, error: message };
     }
     const resendBody = (await response.json().catch(() => null)) as { id?: string } | null;
     logger.info(
       { reference: data.reference, resendId: resendBody?.id ?? null },
       "Donation confirmation email sent",
     );
-    return true;
+    return { ok: true, status: response.status, id: resendBody?.id };
   } catch (err) {
     logger.error({ err, reference: data.reference }, "Failed to send donation confirmation email");
-    return false;
+    return { ok: false, error: "Could not reach the Resend API (network error)." };
   }
+}
+
+/**
+ * Boolean wrapper used by the donation flow. Returns true only when Resend
+ * accepted the email — callers use this to keep the one-time `email_sent_at`
+ * claim, so no duplicates are possible.
+ */
+export async function sendDonationConfirmation(
+  data: DonationEmailData,
+): Promise<boolean> {
+  return (await sendDonationConfirmationDetailed(data)).ok;
 }

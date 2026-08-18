@@ -189,8 +189,10 @@ export function DonationsSection() {
         <p className="text-xs text-gray-500 mb-3">
           Sends a real donation-confirmation test email from hockeyheartinitiative.com via Resend. Use this to verify inbox delivery.
         </p>
+        <label htmlFor="donations-test-email-to" className="block text-sm font-medium text-gray-700 mb-1.5">To Email Address</label>
         <div className="flex flex-wrap gap-2 items-center">
           <input
+            id="donations-test-email-to"
             type="email"
             value={testEmailTo}
             onChange={(e) => { setTestEmailTo(e.target.value); setTestEmailResult(null); }}

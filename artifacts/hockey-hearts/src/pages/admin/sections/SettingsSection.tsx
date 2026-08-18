@@ -51,7 +51,7 @@ export function SettingsSection() {
     e.preventDefault();
     setTestEmailResult(null);
     setTestEmailLoading(true);
-    const result = await sendAdminTestEmail(testEmailTo);
+    const result = await sendAdminTestEmail(testEmailTo.trim());
     setTestEmailLoading(false);
     setTestEmailResult({
       ok: result.ok,
@@ -102,8 +102,11 @@ export function SettingsSection() {
             </p>
           </div>
         </div>
-        <form onSubmit={handleSendTestEmail} className="flex gap-2">
+        <form onSubmit={handleSendTestEmail} className="space-y-1.5">
+          <label htmlFor="test-email-to" className="text-sm font-medium text-gray-700">To Email Address</label>
+          <div className="flex gap-2">
           <input
+            id="test-email-to"
             type="email"
             required
             placeholder="your@gmail.com"
@@ -118,6 +121,7 @@ export function SettingsSection() {
           >
             {testEmailLoading ? "Sending…" : "Send Test"}
           </button>
+          </div>
         </form>
         {testEmailResult && (
           <div
