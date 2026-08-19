@@ -24,6 +24,8 @@ export async function flutterwaveCreatePayment(input: {
   email: string;
   name: string;
   redirectUrl: string;
+  /** Flutterwave payment_options string, e.g. "card" or "banktransfer". */
+  paymentOptions: string;
 }): Promise<{ ok: boolean; link?: string; error?: string }> {
   const res = await fetch(`${FLW_BASE}/payments`, {
     method: "POST",
@@ -37,7 +39,7 @@ export async function flutterwaveCreatePayment(input: {
       currency: "USD",
       // Explicitly request payment options; without this some accounts show
       // "No Payment method available" on the hosted checkout for USD.
-      payment_options: "card",
+      payment_options: input.paymentOptions,
       redirect_url: input.redirectUrl,
       customer: { email: input.email, name: input.name },
       customizations: {

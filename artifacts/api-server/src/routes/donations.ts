@@ -154,6 +154,9 @@ router.post("/donations/initialize", initializeLimiter, async (req, res) => {
     email: input.email.toLowerCase(),
     name: input.anonymous ? "Anonymous Donor" : input.donorName,
     redirectUrl,
+    // Match the donor's chosen method: card, or bank transfer (with card as
+    // a visible fallback in case transfer isn't available for their region).
+    paymentOptions: input.method === "bank_transfer" ? "banktransfer, card" : "card",
   });
   if (!payment.ok || !payment.link) {
     logger.error({ reference, error: payment.error }, "Payment initialization failed");
