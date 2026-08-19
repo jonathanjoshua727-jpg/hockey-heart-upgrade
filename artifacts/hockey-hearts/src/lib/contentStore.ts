@@ -519,7 +519,7 @@ const SEED_CAMPAIGNS: Campaign[] = [
 const DEFAULT_PAYMENT: PaymentSettings = {
   paystackPublicKey: '',
   paystackEnabled: false,
-  cardEnabled: false,
+  cardEnabled: true,
   bankTransferEnabled: true,
   cryptoEnabled: false,
   cryptoWallets: {

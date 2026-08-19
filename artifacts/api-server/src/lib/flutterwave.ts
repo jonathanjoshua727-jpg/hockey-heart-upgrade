@@ -35,6 +35,9 @@ export async function flutterwaveCreatePayment(input: {
       tx_ref: input.txRef,
       amount: input.amountUsd.toFixed(2),
       currency: "USD",
+      // Explicitly request payment options; without this some accounts show
+      // "No Payment method available" on the hosted checkout for USD.
+      payment_options: "card",
       redirect_url: input.redirectUrl,
       customer: { email: input.email, name: input.name },
       customizations: {
