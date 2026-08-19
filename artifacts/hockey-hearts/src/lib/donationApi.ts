@@ -13,12 +13,14 @@ export interface InitializeInput {
   anonymous: boolean;
   message?: string;
   method: "card" | "bank_transfer";
+  redirectPath?: string;
 }
 
 export interface InitializeResult {
   reference: string;
   amountCents: number;
   email: string;
+  paymentLink: string;
 }
 
 export interface VerifiedDonation {

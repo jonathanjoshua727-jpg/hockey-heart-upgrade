@@ -135,7 +135,7 @@ export function ContactSection() {
       {/* Bank details */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-5">
         <h3 className="font-bold text-gray-900">Bank Transfer Details</h3>
-        <p className="text-sm text-gray-500">Displayed to donors who choose Bank Transfer on the donation form (shown inside the secure Paystack window).</p>
+        <p className="text-sm text-gray-500">Displayed to donors who choose Bank Transfer on the donation form (shown inside the secure checkout).</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-gray-700">Bank Name</label>

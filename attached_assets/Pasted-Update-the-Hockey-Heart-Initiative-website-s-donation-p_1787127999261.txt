@@ -1,0 +1,214 @@
+Update the Hockey Heart Initiative website’s donation/payment system.
+
+MAIN CHANGE
+
+Flutterwave is now replacing Paystack as the primary online payment provider.
+
+Remove Paystack as an active payment provider from the donation flow and integrate Flutterwave instead.
+
+PRIMARY DONATION CURRENCY
+
+USD must remain the primary and default donation currency for Hockey Heart Initiative.
+
+This is very important:
+
+* The website must display USD ($) as the default currency.
+* The minimum donation remains $50 USD.
+* Donation amounts and suggested donation buttons should remain in USD.
+* Do NOT change the website’s primary currency to NGN.
+* Do NOT make NGN the default currency simply because the Flutterwave account is based in Nigeria.
+* International donors should see the donation experience primarily in USD.
+* Flutterwave should process USD transactions where supported.
+* If Flutterwave requires a different settlement currency behind the scenes, that must not change the donor-facing primary currency from USD.
+* Do not perform unreliable client-side currency conversions.
+* Use Flutterwave’s supported currency/transaction configuration for any required conversion or settlement.
+* Other currencies may be supported where Flutterwave allows them, but USD remains the main currency displayed by the Hockey Heart Initiative website.
+
+IMPORTANT
+
+Do NOT redesign the website or change unrelated features.
+
+Keep the existing Hockey Heart Initiative branding, layout, donation experience, donation amounts, minimum donation rules, confirmation pages, admin dashboard, and other working functionality unless a change is specifically required for the Flutterwave integration.
+
+DONOR EXPERIENCE
+
+Flutterwave should work behind the scenes as much as possible.
+
+The donor should primarily see:
+
+* Hockey Heart Initiative
+* Secure donation/payment checkout
+* Donation amounts displayed in USD
+* Available payment methods supported by Flutterwave for that transaction
+
+The donor should not be unnecessarily presented with internal Nigerian banking information.
+
+Do not prominently advertise “Flutterwave” as the donation method on the Hockey Heart Initiative website unless Flutterwave’s checkout itself requires its name to be displayed.
+
+PAYMENT FLOW
+
+Replace the existing Paystack donation flow with:
+
+1. Donor selects or enters a donation amount in USD.
+2. The website validates that the donation meets the $50 minimum.
+3. Donor clicks Donate.
+4. Website securely creates/initializes the Flutterwave transaction.
+5. Donor is redirected to or presented with Flutterwave’s secure checkout.
+6. Donor completes payment using the payment methods available to them.
+7. Flutterwave confirms the transaction.
+8. Website verifies the transaction server-side before treating the donation as successful.
+9. Donor is redirected to the existing Hockey Heart Initiative thank-you/success page.
+10. The donation is recorded in the existing admin dashboard/database.
+11. The existing donation confirmation/email functionality continues working.
+
+CURRENCY HANDLING
+
+The donation system must be designed around USD as the primary currency.
+
+Do not hard-code NGN as the website’s primary donation currency.
+
+Do not automatically convert the $50 minimum into an arbitrary NGN amount on the website.
+
+For example, the website should continue showing:
+
+$50 USD
+
+rather than:
+
+₦XX,XXX NGN
+
+unless the donor is explicitly choosing another supported currency.
+
+If Flutterwave requires a supported transaction/settlement currency configuration, handle that securely on the backend while preserving USD as the donor-facing primary currency whenever Flutterwave supports USD for the transaction.
+
+PAYMENT METHODS
+
+Use Flutterwave’s available payment methods for eligible donors, including cards and other supported methods based on the donor’s country and transaction currency.
+
+Do not display payment methods that Flutterwave cannot actually process for the transaction.
+
+The website should not falsely promise a payment method simply because it exists somewhere in Flutterwave’s ecosystem.
+
+INTERNATIONAL DONORS
+
+The donation system should be designed for international donors.
+
+The primary donor experience should remain USD-based, while Flutterwave handles the available payment options and supported currencies behind the scenes.
+
+Do not make the website appear to be an NGN-only or Nigeria-only donation platform.
+
+SECURITY
+
+Never expose Flutterwave Secret Key or other private credentials in frontend code.
+
+Use Replit Secrets/environment variables for:
+
+* FLUTTERWAVE_SECRET_KEY
+* FLUTTERWAVE_PUBLIC_KEY
+* Any other Flutterwave credentials required by the current API/integration
+
+The secret key must only be used server-side.
+
+Verify Flutterwave transactions server-side before marking a donation as successful.
+
+Implement webhook verification securely if the existing architecture uses webhooks.
+
+Do not trust a frontend redirect alone as proof of payment.
+
+PAYSTACK REMOVAL
+
+Search the entire project for Paystack references and identify every place where Paystack is currently used.
+
+Remove or replace:
+
+* Paystack initialization
+* Paystack checkout
+* Paystack public key references
+* Paystack secret key references
+* Paystack API calls
+* Paystack webhook handling
+* Paystack transaction verification
+* Paystack-specific frontend components
+* Paystack-specific environment variables
+* Paystack-specific donor-facing text
+
+Do not delete unrelated payment functionality or existing donation records.
+
+If existing Paystack code is useful as a reference for the donation workflow, adapt the workflow to Flutterwave rather than breaking the existing system.
+
+EXISTING FEATURES TO PRESERVE
+
+Keep:
+
+* Hockey Heart Initiative branding
+* Existing donation page design
+* USD as the primary/default donation currency
+* $50 minimum donation
+* Bank transfer donation option if already implemented
+* Crypto donation option if already implemented
+* Existing donation records
+* Existing admin dashboard
+* Existing wallet/address management
+* Existing thank-you page
+* Existing donation confirmation
+* Existing email confirmation
+* Existing donation history
+* Existing routing
+* Existing mobile responsiveness
+
+Do not add gift cards.
+
+FLUTTERWAVE IMPLEMENTATION
+
+Before making changes, inspect the existing project structure and determine whether it uses Next.js, React, Node.js, Express, or another framework.
+
+Use Flutterwave’s current supported API/SDK approach that matches the project’s architecture.
+
+Do not invent API endpoints or credentials.
+
+Create the integration so it is production-ready and maintainable.
+
+Use environment variables rather than hard-coding credentials.
+
+ERROR HANDLING
+
+Handle:
+
+* Cancelled payment
+* Failed payment
+* Abandoned checkout
+* Invalid transaction
+* Duplicate transaction
+* Network/API failure
+* Webhook failure
+* Currency mismatch
+* Amount mismatch
+
+A failed, cancelled, or unverified payment must NOT be recorded as a successful donation.
+
+FINAL CHECK
+
+After implementing the replacement:
+
+1. Search the entire project for remaining active Paystack references.
+2. Confirm Flutterwave is now the active online payment provider.
+3. Confirm USD is still the primary/default donation currency.
+4. Confirm the $50 minimum donation remains intact.
+5. Confirm NGN has not accidentally become the default website currency.
+6. Confirm no secret keys are exposed in frontend code.
+7. Confirm successful payments are verified server-side.
+8. Confirm USD transaction handling is correctly configured with Flutterwave.
+9. Confirm the existing donation database/admin functionality still works.
+10. Confirm the existing thank-you page still works.
+11. Confirm email confirmation still works.
+12. Confirm mobile users can complete the donation flow.
+13. Run the project and fix any errors caused by the integration.
+14. Tell me exactly which files were changed and what was changed.
+15. Tell me which Flutterwave environment variables I need to add in Replit Secrets.
+16. Do not make unrelated changes to the website.
+
+The final result should be:
+
+Hockey Heart Initiative → USD donations → Flutterwave checkout → secure transaction verification → existing thank-you/admin/email system.
+
+Paystack should no longer be the active online payment provider.

@@ -2,7 +2,7 @@ import { Router, type IRouter, type Request } from "express";
 import crypto from "node:crypto";
 import { db, donationsTable } from "@workspace/db";
 import { and, eq, ne } from "drizzle-orm";
-import { getPaystackSecret } from "../lib/paystack";
+import { getFlutterwaveWebhookHash } from "../lib/flutterwave";
 import { verifyAndSettle } from "./donations";
 import { logger } from "../lib/logger";
 
@@ -10,51 +10,62 @@ const router: IRouter = Router();
 
 type RawBodyRequest = Request & { rawBody?: Buffer };
 
-router.post("/paystack/webhook", async (req: RawBodyRequest, res) => {
-  const signature = req.headers["x-paystack-signature"];
-  const raw = req.rawBody;
-  if (!raw || typeof signature !== "string") {
+// Flutterwave webhook. Authenticated via the `verif-hash` header, which must
+// match the secret hash the admin configured in the Flutterwave dashboard
+// (FLUTTERWAVE_SECRET_HASH). Never trust the payload alone — re-verify with
+// Flutterwave's API before settling.
+router.post("/flutterwave/webhook", async (req: RawBodyRequest, res) => {
+  const secretHash = getFlutterwaveWebhookHash();
+  if (!secretHash) {
+    logger.warn("Flutterwave webhook received but FLUTTERWAVE_SECRET_HASH is not set");
+    res.status(503).json({ error: "Webhook not configured" });
+    return;
+  }
+  const signature = req.headers["verif-hash"];
+  if (typeof signature !== "string" || signature.length === 0) {
     res.status(401).json({ error: "Missing signature" });
     return;
   }
-  const expected = crypto
-    .createHmac("sha512", getPaystackSecret())
-    .update(raw)
-    .digest("hex");
   const sigBuf = Buffer.from(signature);
-  const expBuf = Buffer.from(expected);
+  const expBuf = Buffer.from(secretHash);
   if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
-    logger.warn("Paystack webhook: invalid signature");
+    logger.warn("Flutterwave webhook: invalid signature");
     res.status(401).json({ error: "Invalid signature" });
     return;
   }
 
   const event = req.body as {
     event?: string;
-    data?: { reference?: string; transaction_reference?: string; merchant_note?: string; status?: string };
+    "event.type"?: string;
+    data?: {
+      tx_ref?: string;
+      txRef?: string;
+      status?: string;
+      complete_message?: string;
+    };
   };
-  const eventType = event.event ?? "";
-  const reference =
-    event.data?.reference ?? event.data?.transaction_reference ?? "";
+  const eventType = event.event ?? event["event.type"] ?? "";
+  const reference = event.data?.tx_ref ?? event.data?.txRef ?? "";
 
   try {
-    if (eventType === "charge.success" && reference) {
-      // Re-verify with Paystack directly — never trust the webhook payload alone.
+    if (/charge/i.test(eventType) && reference) {
+      // Re-verify with Flutterwave directly — never trust the webhook payload.
       const { status } = await verifyAndSettle(reference);
       if (status >= 500) {
-        // Transient failure (Paystack/API unavailable) — ask Paystack to retry.
+        // Transient failure (Flutterwave/API unavailable) — retry later.
         res.sendStatus(500);
         return;
       }
-    } else if (eventType.startsWith("refund.") && reference) {
-      if (event.data?.status === "processed" || eventType === "refund.processed") {
+    } else if (/refund/i.test(eventType) && reference) {
+      const refundStatus = (event.data?.status ?? "").toLowerCase();
+      if (refundStatus === "completed" || refundStatus === "processed" || /completed/i.test(eventType)) {
         const now = new Date();
         await db
           .update(donationsTable)
           .set({
             status: "refunded",
             refundedAt: now,
-            refundReason: event.data?.merchant_note ?? "Refund processed via Paystack",
+            refundReason: event.data?.complete_message ?? "Refund processed via payment provider",
             updatedAt: now,
           })
           .where(
@@ -69,7 +80,7 @@ router.post("/paystack/webhook", async (req: RawBodyRequest, res) => {
     }
   } catch (err) {
     logger.error({ err, eventType, reference }, "Webhook processing error");
-    // Processing is idempotent — return 5xx so Paystack retries later.
+    // Processing is idempotent — return 5xx so the provider retries later.
     res.sendStatus(500);
     return;
   }

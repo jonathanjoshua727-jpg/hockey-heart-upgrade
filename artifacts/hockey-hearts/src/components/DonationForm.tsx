@@ -15,25 +15,19 @@ import { CheckCircle2, Copy, ExternalLink } from "lucide-react";
 import { trackClick } from "@/lib/analytics";
 import { initializeDonation, verifyDonation } from "@/lib/donationApi";
 
-declare global {
-  interface Window {
-    PaystackPop?: {
-      setup(options: {
-        key: string;
-        email: string;
-        amount: number;
-        currency?: string;
-        ref?: string;
-        channels?: string[];
-        metadata?: Record<string, unknown>;
-        callback: (response: { reference: string }) => void;
-        onClose: () => void;
-      }): { openIframe(): void };
-    };
-  }
-}
-
 const PRESET_AMOUNTS = [50, 100, 250, 500];
+
+// Pending checkout details persisted across the redirect to the hosted
+// payment page so we can rebuild the confirmation screen when the donor
+// returns.
+const PENDING_KEY = "hhi_pending_donation";
+interface PendingDonation {
+  reference: string;
+  amount: number;
+  causeLabel: string;
+  email: string;
+  methodLabel: string;
+}
 
 type PayMethod = "bank" | "card" | "crypto";
 type CryptoKey = keyof PaymentSettings["cryptoWallets"];
@@ -48,19 +42,6 @@ const CRYPTO_OPTIONS: { key: CryptoKey; label: string }[] = [
 
 function randomRef() {
   return "HHI-" + Date.now().toString(36).toUpperCase() + "-" + Math.random().toString(36).slice(2, 8).toUpperCase();
-}
-
-function loadPaystack(): Promise<void> {
-  return new Promise((resolve) => {
-    if (window.PaystackPop) { resolve(); return; }
-    const existing = document.getElementById("paystack-js");
-    if (existing) { existing.addEventListener("load", () => resolve(), { once: true }); return; }
-    const script = document.createElement("script");
-    script.id = "paystack-js";
-    script.src = "https://js.paystack.co/v1/inline.js";
-    script.onload = () => resolve();
-    document.head.appendChild(script);
-  });
 }
 
 export function DonationForm() {
@@ -79,20 +60,70 @@ export function DonationForm() {
   const [cryptoCoin, setCryptoCoin] = useState<CryptoKey>("bitcoin");
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState<{ reference: string; methodLabel: string } | null>(null);
+  const [success, setSuccess] = useState<{
+    reference: string;
+    methodLabel: string;
+    amount?: number;
+    causeLabel?: string;
+    email?: string;
+  } | null>(null);
   const [error, setError] = useState("");
 
   const finalAmount = amount === "custom" ? parseFloat(customAmount || "0") : amount;
   const causeLabel = causes.find((c) => c.id === cause)?.label ?? cause;
 
   const selectedCryptoAddress = settings.cryptoWallets[cryptoCoin];
-  const paystackConfigured = settings.paystackEnabled && settings.paystackPublicKey.length > 0;
-  const bankConfigured = paystackConfigured && settings.bankTransferEnabled;
-  const cardConfigured = settings.cardEnabled && paystackConfigured;
+  // Payment gateway keys live server-side; the toggles alone control what
+  // donors see. The server responds with a clear error if keys are missing.
+  const bankConfigured = settings.bankTransferEnabled;
+  const cardConfigured = settings.cardEnabled;
   const cryptoConfigured = settings.cryptoEnabled;
 
   useEffect(() => {
     trackClick('Donation Page', 'donation_page_visit', window.location.pathname, window.location.pathname);
+  }, []);
+
+  // Returning from the hosted checkout: the gateway appends tx_ref (and
+  // status) to our redirect URL. Verify server-side — the redirect itself is
+  // never treated as proof of payment.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const txRef = params.get("tx_ref");
+    if (!txRef) return;
+
+    let pending: PendingDonation | null = null;
+    try {
+      pending = JSON.parse(sessionStorage.getItem(PENDING_KEY) ?? "null");
+    } catch {
+      pending = null;
+    }
+    sessionStorage.removeItem(PENDING_KEY);
+    // Clean the query string so refreshes don't re-trigger verification.
+    window.history.replaceState({}, "", window.location.pathname);
+
+    setLoading(true);
+    verifyDonation(txRef)
+      .then((result) => {
+        setLoading(false);
+        if (result.verified && result.donation) {
+          trackClick("Donation Completed", "donation_success", "/donate", window.location.pathname);
+          setSuccess({
+            reference: result.donation.reference,
+            methodLabel: pending?.methodLabel ?? "Secure Checkout",
+            amount: result.donation.amount,
+            causeLabel: result.donation.causeLabel,
+            email: pending?.email,
+          });
+        } else {
+          trackClick("Verification Failed", "donation_failed", "/donate", window.location.pathname);
+          setError(result.error || "We couldn't complete your donation. No successful donation was recorded. Please try again.");
+        }
+      })
+      .catch(() => {
+        setLoading(false);
+        trackClick("Verification Failed", "donation_failed", "/donate", window.location.pathname);
+        setError("We couldn't complete your donation. No successful donation was recorded. Please try again.");
+      });
   }, []);
 
   function copyAddress() {
@@ -127,14 +158,15 @@ export function DonationForm() {
     saveTransaction(tx);
   }
 
-  async function handlePaystackDonation(payMethod: "bank_transfer" | "card") {
+  async function handleGatewayDonation(payMethod: "bank_transfer" | "card") {
     const err = validate();
     if (err) { setError(err); return; }
     const methodLabel = payMethod === "bank_transfer" ? "Bank Transfer" : "Credit/Debit Card";
     setLoading(true);
     try {
-      // 1. Server-side initialization: validates amount/program and creates
-      //    a pending record. The reference comes from the server.
+      // 1. Server-side initialization: validates amount/program, creates a
+      //    pending record, and returns the secure hosted checkout link. The
+      //    reference and link both come from the server.
       const init = await initializeDonation({
         amount: finalAmount,
         causeId: cause,
@@ -144,52 +176,24 @@ export function DonationForm() {
         anonymous,
         message: message.trim() || undefined,
         method: payMethod,
+        redirectPath: window.location.pathname,
       });
 
-      await loadPaystack();
-      if (!window.PaystackPop) throw new Error("Payment processor failed to load.");
-      let callbackFired = false;
-      window.PaystackPop.setup({
-        key: settings.paystackPublicKey,
-        email: init.email,
-        amount: init.amountCents,
-        currency: "USD",
-        ref: init.reference,
-        ...(payMethod === "bank_transfer" ? { channels: ["bank_transfer"] } : {}),
-        metadata: {
-          donorName: anonymous ? "Anonymous" : `${firstName.trim()} ${lastName.trim()}`.trim(),
-          cause: causeLabel,
-          anonymous,
-          message,
-        },
-        callback: (response) => {
-          callbackFired = true;
-          // 2. Server-side verification — the frontend never decides success.
-          verifyDonation(response.reference)
-            .then((result) => {
-              setLoading(false);
-              if (result.verified) {
-                trackClick("Donation Completed", "donation_success", "/donate", window.location.pathname);
-                setSuccess({ reference: response.reference, methodLabel });
-              } else {
-                trackClick("Verification Failed", "donation_failed", "/donate", window.location.pathname);
-                setError(result.error || "We couldn't complete your donation. No successful donation was recorded. Please try again.");
-              }
-            })
-            .catch(() => {
-              setLoading(false);
-              trackClick("Verification Failed", "donation_failed", "/donate", window.location.pathname);
-              setError("We couldn't complete your donation. No successful donation was recorded. Please try again.");
-            });
-        },
-        onClose: () => {
-          if (callbackFired) return;
-          setLoading(false);
-          trackClick("Checkout Closed", "donation_failed", "/donate", window.location.pathname);
-          setError("We couldn't complete your donation. No successful donation was recorded. Please try again.");
-        },
-      }).openIframe();
+      // Persist what we need to rebuild the confirmation screen after the
+      // donor returns from the hosted checkout page.
+      const pending: PendingDonation = {
+        reference: init.reference,
+        amount: finalAmount,
+        causeLabel,
+        email: email.trim(),
+        methodLabel,
+      };
+      sessionStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+
       trackClick(`Checkout Started (${methodLabel})`, "checkout_start", "/donate", window.location.pathname);
+      // 2. Redirect to the secure hosted checkout. On return, the effect
+      //    above verifies server-side — the redirect is never trusted alone.
+      window.location.assign(init.paymentLink);
     } catch (e) {
       setLoading(false);
       setError(e instanceof Error && e.message ? e.message : "Failed to start your donation. Please try again or contact us.");
@@ -201,7 +205,7 @@ export function DonationForm() {
       setError("Bank transfer payments are not yet configured. Please contact us to complete your donation.");
       return;
     }
-    return handlePaystackDonation("bank_transfer");
+    return handleGatewayDonation("bank_transfer");
   }
 
   function handleCard() {
@@ -209,7 +213,7 @@ export function DonationForm() {
       setError("Card payments are not yet configured. Please use Bank Transfer or contact us.");
       return;
     }
-    return handlePaystackDonation("card");
+    return handleGatewayDonation("card");
   }
 
   async function handleCryptoConfirm() {
@@ -223,6 +227,9 @@ export function DonationForm() {
 
   if (success) {
     const donationDate = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+    const shownAmount = success.amount ?? finalAmount;
+    const shownCause = success.causeLabel ?? causeLabel;
+    const shownEmail = success.email ?? email;
     return (
       <div className="bg-card border border-card-border rounded-3xl p-8 md:p-12 shadow-xl text-center space-y-6">
         <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
@@ -239,11 +246,11 @@ export function DonationForm() {
         <div className="bg-muted/40 border border-border rounded-2xl p-5 text-sm space-y-2 text-left">
           <div className="flex justify-between gap-2">
             <span className="text-muted-foreground">Amount</span>
-            <span className="font-semibold text-primary">${finalAmount.toLocaleString()} USD</span>
+            <span className="font-semibold text-primary">${shownAmount.toLocaleString()} USD</span>
           </div>
           <div className="flex justify-between gap-2">
             <span className="text-muted-foreground">Designation</span>
-            <span className="font-medium">{causeLabel}</span>
+            <span className="font-medium">{shownCause}</span>
           </div>
           <div className="flex justify-between gap-2">
             <span className="text-muted-foreground">Method</span>
@@ -279,7 +286,7 @@ export function DonationForm() {
         )}
 
         <p className="text-xs text-muted-foreground">
-          A confirmation will be sent to <strong>{email}</strong>.<br />
+          {shownEmail && (<>A confirmation will be sent to <strong>{shownEmail}</strong>.<br /></>)}
           Hockey Heart Initiative — empowering youth through hockey.
         </p>
         <button
@@ -468,9 +475,9 @@ export function DonationForm() {
               <>
                 <p className="text-sm font-semibold text-foreground">How it works</p>
                 <p className="text-sm text-muted-foreground">
-                  After clicking the button below, a secure payment window will open and provide
-                  a unique account number for you to transfer to. Your donation is confirmed
-                  automatically once the transfer is received.
+                  After clicking the button below, you'll be taken to a secure checkout page
+                  showing the transfer options available in your region. Your donation is
+                  confirmed automatically once the payment is received.
                 </p>
               </>
             ) : (
@@ -609,7 +616,7 @@ export function DonationForm() {
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
-          Secure payment powered by Paystack
+          Secure, encrypted donation checkout
         </p>
       </div>
     </form>

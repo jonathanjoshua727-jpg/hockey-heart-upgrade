@@ -41,9 +41,9 @@ export function PaymentSection() {
       <div className="flex gap-3 bg-amber-50 border border-amber-200 rounded-2xl p-4">
         <ShieldAlert className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
         <div className="text-sm text-amber-800">
-          <strong>Security note:</strong> API keys are stored in your browser's local storage for this prototype. 
-          In production, all keys should be stored server-side in encrypted environment variables. 
-          Never share or expose your Paystack secret key publicly.
+          <strong>Security note:</strong> Payment gateway API keys are stored server-side in
+          encrypted environment variables (Replit Secrets) — never in the website or browser.
+          Never share or expose your payment gateway secret key publicly.
         </div>
       </div>
 
@@ -52,8 +52,8 @@ export function PaymentSection() {
         <h3 className="font-bold text-gray-900">Payment Methods</h3>
         <div className="space-y-4">
           {([
-            { key: "bankTransferEnabled", label: "Bank Transfer", desc: "Paystack-powered bank transfer — donor receives a virtual account to transfer to" },
-            { key: "cardEnabled", label: "Credit / Debit Card (via Paystack)", desc: "Card payments processed through Paystack" },
+            { key: "bankTransferEnabled", label: "Bank Transfer", desc: "Secure hosted checkout showing the transfer options available in the donor's region" },
+            { key: "cardEnabled", label: "Credit / Debit Card", desc: "Card payments processed through the secure hosted checkout" },
             { key: "cryptoEnabled", label: "Cryptocurrency", desc: "Show crypto wallet addresses to donors" },
           ] as const).map(({ key, label, desc }) => (
             <div key={key} className="flex items-start justify-between gap-4 p-4 border border-gray-100 rounded-xl">
@@ -78,56 +78,20 @@ export function PaymentSection() {
         </div>
       </div>
 
-      {/* Paystack config */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-5">
+      {/* Payment gateway */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-4">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
             <Wallet className="w-4 h-4 text-blue-600" />
           </div>
-          <h3 className="font-bold text-gray-900">Paystack Configuration</h3>
+          <h3 className="font-bold text-gray-900">Payment Gateway</h3>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-gray-700">Public Key</label>
-            <input
-              type="text"
-              value={settings.paystackPublicKey}
-              onChange={(e) => update({ paystackPublicKey: e.target.value })}
-              placeholder="pk_live_xxxxxxxxxxxxxxxx"
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#0a1f44]/20 focus:border-[#0a1f44]"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-gray-700">Secret Key</label>
-            <p className="text-xs text-gray-500 border border-gray-200 rounded-xl px-4 py-2.5 bg-gray-50">
-              For security, the Paystack secret key is never stored in the website. It belongs
-              in the server environment only.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl text-sm">
-          <span className="text-gray-700">Paystack enabled</span>
-          <div
-            onClick={() => update({ paystackEnabled: !settings.paystackEnabled })}
-            className={`w-10 h-6 rounded-full transition-colors cursor-pointer ${
-              settings.paystackEnabled ? "bg-[#0a1f44]" : "bg-gray-200"
-            } relative`}
-          >
-            <div
-              className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                settings.paystackEnabled ? "translate-x-5" : "translate-x-1"
-              }`}
-            />
-          </div>
-        </div>
-
-        {!settings.paystackPublicKey && (
-          <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">
-            ⚠ Paystack keys not configured. The donation form will show a "Being configured" message to donors.
-          </p>
-        )}
+        <p className="text-xs text-gray-500 border border-gray-200 rounded-xl px-4 py-2.5 bg-gray-50">
+          For security, payment gateway API keys are never stored in the website. They are
+          configured server-side in the environment (Replit Secrets) by the administrator.
+          Donations are processed in USD through a secure hosted checkout, and every payment
+          is verified server-side before it is recorded as successful.
+        </p>
       </div>
 
       {/* Crypto wallets */}

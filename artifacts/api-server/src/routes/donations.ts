@@ -3,7 +3,10 @@ import crypto from "node:crypto";
 import { z } from "zod/v4";
 import { db, donationsTable, type Donation } from "@workspace/db";
 import { and, eq, isNull } from "drizzle-orm";
-import { paystackVerify } from "../lib/paystack";
+import {
+  flutterwaveCreatePayment,
+  flutterwaveVerifyByTxRef,
+} from "../lib/flutterwave";
 import { sendDonationConfirmation } from "../lib/mailer";
 import { logger } from "../lib/logger";
 
@@ -68,6 +71,13 @@ const initializeSchema = z.object({
   anonymous: z.boolean().default(false),
   message: z.string().max(2000).optional(),
   method: z.enum(["card", "bank_transfer"]),
+  // Path on our own site to return the donor to after checkout. Must be a
+  // site-relative path (never a full URL) so it cannot become an open redirect.
+  redirectPath: z
+    .string()
+    .max(300)
+    .regex(/^\/(?!\/)/)
+    .optional(),
 });
 
 function newReference(): string {
@@ -120,7 +130,35 @@ router.post("/donations/initialize", initializeLimiter, async (req, res) => {
     method: input.method,
   });
 
-  res.json({ reference, amountCents, email: input.email.toLowerCase() });
+  // Create the hosted Flutterwave checkout link server-side (secret key never
+  // leaves the server). The donor returns to our own site after checkout.
+  const origin = `${req.protocol}://${req.get("host")}`;
+  const redirectUrl = `${origin}${input.redirectPath ?? "/donate"}`;
+  const payment = await flutterwaveCreatePayment({
+    txRef: reference,
+    amountUsd: input.amount,
+    email: input.email.toLowerCase(),
+    name: input.anonymous ? "Anonymous Donor" : input.donorName,
+    redirectUrl,
+  });
+  if (!payment.ok || !payment.link) {
+    logger.error({ reference, error: payment.error }, "Payment initialization failed");
+    await db
+      .update(donationsTable)
+      .set({ status: "failed", gatewayResponse: "Payment initialization failed", updatedAt: new Date() })
+      .where(and(eq(donationsTable.reference, reference), eq(donationsTable.status, "pending")));
+    res.status(502).json({
+      error: "We couldn't start your donation. Please try again in a moment.",
+    });
+    return;
+  }
+
+  res.json({
+    reference,
+    amountCents,
+    email: input.email.toLowerCase(),
+    paymentLink: payment.link,
+  });
 });
 
 // ── Shared verification logic (used by verify endpoint + webhook) ─────────
@@ -140,7 +178,30 @@ export async function verifyAndSettle(
     return { status: 200, body: { verified: true, donation: publicDonation(record) } };
   }
 
-  const result = await paystackVerify(reference);
+  const result = await flutterwaveVerifyByTxRef(reference);
+  const now = new Date();
+
+  if (result.notFound) {
+    // Donor never completed a charge attempt (closed/abandoned checkout).
+    await db
+      .update(donationsTable)
+      .set({ status: "cancelled", gatewayResponse: "Checkout abandoned", updatedAt: now })
+      .where(
+        and(
+          eq(donationsTable.reference, reference),
+          eq(donationsTable.status, "pending"),
+        ),
+      );
+    return {
+      status: 402,
+      body: {
+        verified: false,
+        error:
+          "We couldn't complete your donation. No successful donation was recorded. Please try again.",
+      },
+    };
+  }
+
   if (!result.ok || !result.data) {
     return {
       status: 502,
@@ -153,19 +214,19 @@ export async function verifyAndSettle(
   }
 
   const data = result.data;
-  const now = new Date();
+  const paidCents = Math.round(data.amount * 100);
 
-  if (data.status === "success") {
+  if (data.status === "successful") {
     // Amount/currency tamper check — the paid amount must cover the pledge.
     const amountOk =
-      data.currency === record.currency && data.amount >= record.amountCents;
+      data.currency === record.currency && paidCents >= record.amountCents;
     if (!amountOk) {
       await db
         .update(donationsTable)
         .set({
           status: "failed",
-          paidAmountCents: data.amount,
-          gatewayResponse: `Amount/currency mismatch (paid ${data.amount} ${data.currency}, expected ${record.amountCents} ${record.currency})`,
+          paidAmountCents: paidCents,
+          gatewayResponse: `Amount/currency mismatch (paid ${data.amount} ${data.currency}, expected ${record.amountCents / 100} ${record.currency})`,
           paystackId: String(data.id),
           updatedAt: now,
         })
@@ -192,12 +253,12 @@ export async function verifyAndSettle(
       .update(donationsTable)
       .set({
         status: "successful",
-        paidAmountCents: data.amount,
-        channel: data.channel,
-        gatewayResponse: data.gateway_response,
+        paidAmountCents: paidCents,
+        channel: data.payment_type,
+        gatewayResponse: data.processor_response,
         paystackId: String(data.id),
         verifiedAt: now,
-        paidAt: data.paid_at ? new Date(data.paid_at) : now,
+        paidAt: data.created_at ? new Date(data.created_at) : now,
         updatedAt: now,
       })
       .where(
@@ -263,13 +324,26 @@ export async function verifyAndSettle(
     return { status: 200, body: { verified: true, donation: publicDonation(donation) } };
   }
 
-  // Not successful — record failure (abandoned/failed/etc.)
-  const failedStatus = data.status === "abandoned" ? "cancelled" : "failed";
+  // Still processing — leave the record pending so the webhook or a later
+  // verify can settle it. Never finalize on an in-flight transaction.
+  if (data.status === "pending") {
+    return {
+      status: 402,
+      body: {
+        verified: false,
+        error:
+          "Your payment is still processing. If it completes, your donation will be confirmed by email.",
+      },
+    };
+  }
+
+  // Not successful — record failure (cancelled/failed/etc.)
+  const failedStatus = /cancel|abandon/i.test(data.status) ? "cancelled" : "failed";
   await db
     .update(donationsTable)
     .set({
       status: failedStatus,
-      gatewayResponse: data.gateway_response,
+      gatewayResponse: data.processor_response,
       paystackId: String(data.id),
       updatedAt: now,
     })
@@ -290,7 +364,7 @@ export async function verifyAndSettle(
   };
 }
 
-// ── Verify: called by the frontend after Paystack popup callback ──────────
+// ── Verify: called by the frontend after returning from checkout ──────────
 router.post("/donations/verify", verifyLimiter, async (req, res) => {
   const parsed = z.object({ reference: z.string().min(1).max(200) }).safeParse(req.body);
   if (!parsed.success) {
