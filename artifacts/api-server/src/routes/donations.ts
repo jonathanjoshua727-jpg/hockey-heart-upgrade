@@ -80,6 +80,19 @@ const initializeSchema = z.object({
     .optional(),
 });
 
+// Canonical public origin for post-checkout redirects. Built from server
+// configuration only (PUBLIC_ORIGIN override, else the Replit-managed domain),
+// never from request headers, to prevent Host-header redirect injection.
+export function getCanonicalOrigin(): string {
+  const configured = process.env.PUBLIC_ORIGIN;
+  if (configured) return configured.replace(/\/+$/, "");
+  const domain =
+    process.env.REPLIT_DOMAINS?.split(",")[0]?.trim() ||
+    process.env.REPLIT_DEV_DOMAIN;
+  if (!domain) throw new Error("No canonical origin configured (set PUBLIC_ORIGIN)");
+  return `https://${domain}`;
+}
+
 function newReference(): string {
   return (
     "HHI-" +
@@ -132,8 +145,9 @@ router.post("/donations/initialize", initializeLimiter, async (req, res) => {
 
   // Create the hosted Flutterwave checkout link server-side (secret key never
   // leaves the server). The donor returns to our own site after checkout.
-  const origin = `${req.protocol}://${req.get("host")}`;
-  const redirectUrl = `${origin}${input.redirectPath ?? "/donate"}`;
+  // The origin is built from server configuration, never from request
+  // headers, so a crafted Host header can't redirect donors off-site.
+  const redirectUrl = `${getCanonicalOrigin()}${input.redirectPath ?? "/donate"}`;
   const payment = await flutterwaveCreatePayment({
     txRef: reference,
     amountUsd: input.amount,
@@ -182,16 +196,10 @@ export async function verifyAndSettle(
   const now = new Date();
 
   if (result.notFound) {
-    // Donor never completed a charge attempt (closed/abandoned checkout).
-    await db
-      .update(donationsTable)
-      .set({ status: "cancelled", gatewayResponse: "Checkout abandoned", updatedAt: now })
-      .where(
-        and(
-          eq(donationsTable.reference, reference),
-          eq(donationsTable.status, "pending"),
-        ),
-      );
+    // No charge attempt is queryable yet. This can mean the donor abandoned
+    // checkout — but it can also mean the transaction simply isn't indexed
+    // yet. Leave the record pending so a later webhook or re-verify can
+    // still settle a real payment; never move it to a terminal state here.
     return {
       status: 402,
       body: {

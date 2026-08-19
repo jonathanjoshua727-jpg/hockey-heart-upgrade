@@ -1,8 +1,12 @@
 import { Router, type IRouter, type Request } from "express";
 import crypto from "node:crypto";
 import { db, donationsTable } from "@workspace/db";
-import { and, eq, ne } from "drizzle-orm";
-import { getFlutterwaveWebhookHash } from "../lib/flutterwave";
+import { and, eq } from "drizzle-orm";
+import {
+  getFlutterwaveWebhookHash,
+  flutterwaveVerifyByTxRef,
+  flutterwaveFindCompletedRefund,
+} from "../lib/flutterwave";
 import { verifyAndSettle } from "./donations";
 import { logger } from "../lib/logger";
 
@@ -57,25 +61,40 @@ router.post("/flutterwave/webhook", async (req: RawBodyRequest, res) => {
         return;
       }
     } else if (/refund/i.test(eventType) && reference) {
-      const refundStatus = (event.data?.status ?? "").toLowerCase();
-      if (refundStatus === "completed" || refundStatus === "processed" || /completed/i.test(eventType)) {
-        const now = new Date();
-        await db
-          .update(donationsTable)
-          .set({
-            status: "refunded",
-            refundedAt: now,
-            refundReason: event.data?.complete_message ?? "Refund processed via payment provider",
-            updatedAt: now,
-          })
-          .where(
-            and(
-              eq(donationsTable.reference, reference),
-              // Idempotent: never re-stamp an already-refunded record, so a
-              // duplicate refund event can't overwrite refundedAt/reason.
-              ne(donationsTable.status, "refunded"),
-            ),
-          );
+      // Never trust the payload: confirm the transaction exists and that a
+      // completed refund is on record with Flutterwave before updating.
+      const tx = await flutterwaveVerifyByTxRef(reference);
+      if (!tx.ok || !tx.data) {
+        if (!tx.notFound) {
+          res.sendStatus(500); // transient — let the provider retry
+          return;
+        }
+        // No such transaction — ignore the event.
+      } else {
+        const refundCheck = await flutterwaveFindCompletedRefund(tx.data.id);
+        if (!refundCheck.ok) {
+          res.sendStatus(500); // transient — let the provider retry
+          return;
+        }
+        if (refundCheck.refunded) {
+          const now = new Date();
+          await db
+            .update(donationsTable)
+            .set({
+              status: "refunded",
+              refundedAt: now,
+              refundReason: "Refund confirmed via payment provider",
+              updatedAt: now,
+            })
+            .where(
+              and(
+                eq(donationsTable.reference, reference),
+                // Only a settled donation can be refunded, and idempotently:
+                // a duplicate event can't re-stamp refundedAt.
+                eq(donationsTable.status, "successful"),
+              ),
+            );
+        }
       }
     }
   } catch (err) {

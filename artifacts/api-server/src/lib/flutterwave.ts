@@ -90,3 +90,27 @@ export async function flutterwaveVerifyByTxRef(
   }
   return { ok: true, data: body.data };
 }
+
+// ── Verify that a refund actually exists for a transaction ─────────────────
+// Never trust a webhook payload: confirm against Flutterwave's refunds API,
+// matched to the specific transaction id.
+export async function flutterwaveFindCompletedRefund(txId: number): Promise<{
+  ok: boolean;
+  refunded?: boolean;
+  error?: string;
+}> {
+  const res = await fetch(`${FLW_BASE}/refunds?tx_id=${encodeURIComponent(String(txId))}`, {
+    headers: { Authorization: `Bearer ${getFlutterwaveSecret()}` },
+  });
+  const body = (await res.json().catch(() => null)) as FlwEnvelope<
+    { tx_id?: number; status?: string }[]
+  > | null;
+  if (!res.ok || body?.status !== "success" || !Array.isArray(body.data)) {
+    return { ok: false, error: body?.message ?? `Refund lookup failed (${res.status})` };
+  }
+  // Filter client-side too, in case the API ignores the tx_id query param.
+  const refunded = body.data.some(
+    (r) => Number(r.tx_id) === txId && /^(completed|successful|processed)$/i.test(r.status ?? ""),
+  );
+  return { ok: true, refunded };
+}
