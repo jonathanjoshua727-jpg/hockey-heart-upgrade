@@ -1,6 +1,7 @@
 // Client for the donations backend (api-server mounted at /api).
 // The frontend never decides donation success — only the server-verified
 // result counts.
+import type { PaymentSettings } from "./contentStore";
 
 const API_BASE = "/api";
 
@@ -66,6 +67,36 @@ export interface DonationStats {
   byCurrency: { currency: string; total: number; count: number }[];
 }
 
+type ServerPaymentSettings = Omit<
+  PaymentSettings,
+  "paystackPublicKey" | "paystackEnabled"
+>;
+type DonorPaymentSettings = Pick<
+  ServerPaymentSettings,
+  "cardEnabled" | "bankTransferEnabled" | "cryptoEnabled" | "cryptoWallets"
+>;
+
+function withLegacyCompatibility(
+  settings: ServerPaymentSettings,
+): PaymentSettings {
+  return {
+    ...settings,
+    paystackPublicKey: "",
+    paystackEnabled: false,
+  };
+}
+
+function withoutLegacyFields(
+  settings: PaymentSettings,
+): ServerPaymentSettings {
+  const {
+    paystackPublicKey: _paystackPublicKey,
+    paystackEnabled: _paystackEnabled,
+    ...serverSettings
+  } = settings;
+  return serverSettings;
+}
+
 async function jsonFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
@@ -99,6 +130,28 @@ export async function verifyDonation(
     error?: string;
   };
   return { verified: !!body.verified, donation: body.donation, error: body.error };
+}
+
+export async function fetchPublicPaymentSettings(): Promise<PaymentSettings> {
+  const settings = await jsonFetch<DonorPaymentSettings>("/payment-settings");
+  return withLegacyCompatibility({
+    ...settings,
+    // Bank-account fields are admin-only and never returned by the public
+    // endpoint. Keep the compatibility value locally; DonationForm does not
+    // render or transmit it.
+    bankDetails: getLocalBankDetails(),
+  });
+}
+
+function getLocalBankDetails(): PaymentSettings["bankDetails"] {
+  return {
+    bankName: "",
+    accountName: "",
+    accountNumber: "",
+    routingNumber: "",
+    swiftCode: "",
+    instructions: "",
+  };
 }
 
 // ── Admin API ──────────────────────────────────────────────────────────────
@@ -193,4 +246,26 @@ export function fetchDonationStats(): Promise<DonationStats> {
   return jsonFetch<DonationStats>("/admin/donations/stats", {
     headers: adminHeaders(),
   });
+}
+
+export async function fetchAdminPaymentSettings(): Promise<PaymentSettings> {
+  const settings = await jsonFetch<ServerPaymentSettings>(
+    "/admin/payment-settings",
+    { headers: adminHeaders() },
+  );
+  return withLegacyCompatibility(settings);
+}
+
+export async function saveAdminPaymentSettings(
+  settings: PaymentSettings,
+): Promise<PaymentSettings> {
+  const saved = await jsonFetch<ServerPaymentSettings>(
+    "/admin/payment-settings",
+    {
+      method: "PUT",
+      headers: adminHeaders(),
+      body: JSON.stringify(withoutLegacyFields(settings)),
+    },
+  );
+  return withLegacyCompatibility(saved);
 }

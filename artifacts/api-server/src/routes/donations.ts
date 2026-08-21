@@ -9,6 +9,7 @@ import {
 } from "../lib/flutterwave";
 import { sendDonationConfirmation } from "../lib/mailer";
 import { logger } from "../lib/logger";
+import { getPaymentSettings } from "../lib/paymentSettings";
 
 const router: IRouter = Router();
 
@@ -126,6 +127,20 @@ router.post("/donations/initialize", initializeLimiter, async (req, res) => {
     res.status(400).json({ error: "Minimum donation is $50 USD." });
     return;
   }
+  const paymentSettings = await getPaymentSettings();
+  const methodEnabled =
+    input.method === "card"
+      ? paymentSettings.cardEnabled
+      : paymentSettings.bankTransferEnabled;
+  if (!methodEnabled) {
+    res.status(503).json({
+      error:
+        input.method === "card"
+          ? "Card donations are temporarily unavailable."
+          : "Bank transfer donations are temporarily unavailable.",
+    });
+    return;
+  }
   const amountCents = Math.round(input.amount * 100);
   const reference = newReference();
 
@@ -207,6 +222,7 @@ export async function verifyAndSettle(
       status: 402,
       body: {
         verified: false,
+        retryable: true,
         error:
           "We couldn't complete your donation. No successful donation was recorded. Please try again.",
       },
@@ -342,6 +358,7 @@ export async function verifyAndSettle(
       status: 402,
       body: {
         verified: false,
+        retryable: true,
         error:
           "Your payment is still processing. If it completes, your donation will be confirmed by email.",
       },

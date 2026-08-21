@@ -13,7 +13,11 @@ import {
 } from "@/lib/contentStore";
 import { CheckCircle2, Copy, ExternalLink } from "lucide-react";
 import { trackClick } from "@/lib/analytics";
-import { initializeDonation, verifyDonation } from "@/lib/donationApi";
+import {
+  fetchPublicPaymentSettings,
+  initializeDonation,
+  verifyDonation,
+} from "@/lib/donationApi";
 
 const PRESET_AMOUNTS = [50, 100, 250, 500];
 
@@ -45,7 +49,9 @@ function randomRef() {
 }
 
 export function DonationForm() {
-  const settings = getPaymentSettings();
+  const [settings, setSettings] = useState<PaymentSettings>(() =>
+    getPaymentSettings(),
+  );
   const causes = getActiveDonationCauses();
 
   const [amount, setAmount] = useState<number | "custom">(50);
@@ -82,6 +88,37 @@ export function DonationForm() {
   useEffect(() => {
     trackClick('Donation Page', 'donation_page_visit', window.location.pathname, window.location.pathname);
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    fetchPublicPaymentSettings()
+      .then((serverSettings) => {
+        if (active) setSettings(serverSettings);
+      })
+      .catch(() => {
+        // Keep the local compatibility defaults. The server still enforces
+        // method availability when checkout initialization is attempted.
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const selectedEnabled =
+      (method === "bank" && settings.bankTransferEnabled) ||
+      (method === "card" && settings.cardEnabled) ||
+      (method === "crypto" && settings.cryptoEnabled);
+    if (selectedEnabled) return;
+    if (settings.bankTransferEnabled) setMethod("bank");
+    else if (settings.cardEnabled) setMethod("card");
+    else if (settings.cryptoEnabled) setMethod("crypto");
+  }, [
+    method,
+    settings.bankTransferEnabled,
+    settings.cardEnabled,
+    settings.cryptoEnabled,
+  ]);
 
   // Returning from the hosted checkout: the gateway appends tx_ref (and
   // status) to our redirect URL. Verify server-side — the redirect itself is
@@ -262,7 +299,9 @@ export function DonationForm() {
           </div>
           <div className="flex flex-wrap justify-between gap-2 pt-1 border-t border-border">
             <span className="text-muted-foreground">Reference</span>
-            <span className="font-mono font-semibold text-primary">{success.reference}</span>
+            <span className="font-mono font-semibold text-primary break-all text-right">
+              {success.reference}
+            </span>
           </div>
         </div>
 
@@ -305,7 +344,7 @@ export function DonationForm() {
 
   return (
     <form
-      className="bg-card border border-card-border rounded-3xl p-6 md:p-10 shadow-xl space-y-8"
+      className="min-w-0 bg-card border border-card-border rounded-3xl p-6 md:p-10 shadow-xl space-y-8"
       onSubmit={(e) => e.preventDefault()}
     >
       {/* Amount */}
@@ -437,22 +476,39 @@ export function DonationForm() {
         <h3 className="font-serif text-2xl font-bold text-primary">Payment Method</h3>
         <div className="grid grid-cols-1 gap-3">
           {[
-            { id: "bank" as PayMethod, label: "Bank Transfer", tag: "Recommended" },
-            { id: "card" as PayMethod, label: "Credit / Debit Card", tag: "" },
-            { id: "crypto" as PayMethod, label: "Cryptocurrency", tag: "" },
-          ].map((m) => (
+            {
+              id: "bank" as PayMethod,
+              label: "Bank Transfer",
+              tag: "Recommended",
+              enabled: bankConfigured,
+            },
+            {
+              id: "card" as PayMethod,
+              label: "Credit / Debit Card",
+              tag: "",
+              enabled: cardConfigured,
+            },
+            {
+              id: "crypto" as PayMethod,
+              label: "Cryptocurrency",
+              tag: "",
+              enabled: cryptoConfigured,
+            },
+          ].filter((m) => m.enabled).map((m) => (
             <button
               key={m.id}
               type="button"
               onClick={() => setMethod(m.id)}
-              className={`flex items-center justify-between p-4 border rounded-xl transition-colors ${
+              className={`min-w-0 flex items-center justify-between gap-3 p-4 border rounded-xl transition-colors ${
                 method === m.id
                   ? "border-primary bg-primary/5"
                   : "border-primary/20 hover:border-primary/40"
               }`}
             >
-              <span className="font-medium text-primary text-sm">{m.label}</span>
-              <div className="flex items-center gap-2">
+              <span className="min-w-0 font-medium text-primary text-sm break-words text-left">
+                {m.label}
+              </span>
+              <div className="shrink-0 flex items-center gap-2">
                 {m.tag && (
                   <span className="bg-secondary/20 text-secondary-foreground px-2 py-0.5 rounded-full text-xs font-semibold">
                     {m.tag}
@@ -600,7 +656,7 @@ export function DonationForm() {
             handleCryptoConfirm();
           }
         }}
-        className="w-full h-16 text-xl rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-md disabled:opacity-60"
+        className="w-full min-w-0 min-h-16 h-auto py-3 px-3 whitespace-normal break-words text-base sm:text-xl leading-tight rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-md disabled:opacity-60"
       >
         {loading
           ? "Opening payment window…"

@@ -6,21 +6,45 @@ import {
   type PaymentSettings,
 } from "@/lib/contentStore";
 import { Save, Eye, EyeOff, ShieldAlert, Bitcoin, Wallet } from "lucide-react";
+import {
+  fetchAdminPaymentSettings,
+  saveAdminPaymentSettings,
+} from "@/lib/donationApi";
 
 export function WebsiteSettingsSection() {
   const [settings, setSettings] = useState<PaymentSettings | null>(null);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => { setSettings(getPaymentSettings()); }, []);
+  useEffect(() => {
+    setSettings(getPaymentSettings());
+    fetchAdminPaymentSettings()
+      .then((serverSettings) => {
+        setSettings(serverSettings);
+        savePaymentSettings(serverSettings);
+      })
+      .catch(() => setSaveError("Could not load server payment settings."));
+  }, []);
 
   if (!settings) return null;
 
-  function handleSave() {
+  async function handleSave() {
     if (!settings) return;
-    savePaymentSettings(settings);
-    logActivity("SAVE", "Settings", "Payment settings updated");
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    setSaving(true);
+    setSaveError("");
+    try {
+      const savedSettings = await saveAdminPaymentSettings(settings);
+      savePaymentSettings(savedSettings);
+      setSettings(savedSettings);
+      logActivity("SAVE", "Settings", "Payment settings updated");
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      setSaveError((err as Error).message || "Could not save payment settings.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   function update(patch: Partial<PaymentSettings>) {
@@ -119,10 +143,11 @@ export function WebsiteSettingsSection() {
       </div>
 
       <div className="flex items-center gap-4">
-        <button onClick={handleSave} className="flex items-center gap-2 bg-[#0a1f44] text-white px-6 py-3 rounded-xl font-semibold hover:bg-[#0a1f44]/90 transition-colors">
-          <Save className="w-4 h-4" /> Save Payment Settings
+        <button disabled={saving} onClick={handleSave} className="flex items-center gap-2 bg-[#0a1f44] text-white px-6 py-3 rounded-xl font-semibold hover:bg-[#0a1f44]/90 transition-colors disabled:opacity-60">
+          <Save className="w-4 h-4" /> {saving ? "Saving…" : "Save Payment Settings"}
         </button>
         {saved && <span className="text-green-600 text-sm font-medium">✓ Settings saved</span>}
+        {saveError && <span className="text-red-600 text-sm">{saveError}</span>}
       </div>
     </div>
   );

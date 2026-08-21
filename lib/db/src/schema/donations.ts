@@ -27,7 +27,7 @@ export const donationsTable = pgTable(
     reference: text("reference").notNull(),
     /** Amount in cents (USD minor units) as requested by the donor. */
     amountCents: integer("amount_cents").notNull(),
-    /** Amount actually paid according to Paystack verification (cents). */
+    /** Amount actually paid according to payment-provider verification (cents). */
     paidAmountCents: integer("paid_amount_cents"),
     currency: text("currency").notNull().default("USD"),
     status: text("status", { enum: DONATION_STATUSES })
@@ -41,7 +41,7 @@ export const donationsTable = pgTable(
     message: text("message"),
     /** Requested payment method: card | bank_transfer */
     method: text("method").notNull(),
-    /** Actual channel reported by Paystack after verification. */
+    /** Actual channel reported by the payment provider after verification. */
     channel: text("channel"),
     paystackId: text("paystack_id"),
     gatewayResponse: text("gateway_response"),
@@ -84,3 +84,36 @@ export const adminCredentialsTable = pgTable("admin_credentials", {
     .defaultNow(),
 });
 export type AdminCredential = typeof adminCredentialsTable.$inferSelect;
+
+/**
+ * Singleton payment configuration row (id = 1).
+ * Gateway credentials are never stored here; they remain in Replit Secrets.
+ */
+export const paymentSettingsTable = pgTable("payment_settings", {
+  id: integer("id").primaryKey(),
+  cardEnabled: boolean("card_enabled").notNull().default(true),
+  bankTransferEnabled: boolean("bank_transfer_enabled").notNull().default(false),
+  cryptoEnabled: boolean("crypto_enabled").notNull().default(false),
+  bitcoinWallet: text("bitcoin_wallet").notNull().default(""),
+  ethereumWallet: text("ethereum_wallet").notNull().default(""),
+  usdtTrc20Wallet: text("usdt_trc20_wallet").notNull().default(""),
+  usdtErc20Wallet: text("usdt_erc20_wallet").notNull().default(""),
+  solanaWallet: text("solana_wallet").notNull().default(""),
+  bankName: text("bank_name").notNull().default(""),
+  accountName: text("account_name").notNull().default("Hockey Heart Initiative"),
+  accountNumber: text("account_number").notNull().default(""),
+  routingNumber: text("routing_number").notNull().default(""),
+  swiftCode: text("swift_code").notNull().default(""),
+  bankInstructions: text("bank_instructions")
+    .notNull()
+    .default(
+      "Please include your full name and email address as the payment reference so we can match your donation.",
+    ),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+export type PaymentSetting = typeof paymentSettingsTable.$inferSelect;

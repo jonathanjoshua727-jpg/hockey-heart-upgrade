@@ -54,8 +54,8 @@ router.post("/flutterwave/webhook", async (req: RawBodyRequest, res) => {
   try {
     if (/charge/i.test(eventType) && reference) {
       // Re-verify with Flutterwave directly — never trust the webhook payload.
-      const { status } = await verifyAndSettle(reference);
-      if (status >= 500) {
+      const { status, body } = await verifyAndSettle(reference);
+      if (status >= 500 || body.retryable === true) {
         // Transient failure (Flutterwave/API unavailable) — retry later.
         res.sendStatus(500);
         return;
@@ -78,7 +78,7 @@ router.post("/flutterwave/webhook", async (req: RawBodyRequest, res) => {
         }
         if (refundCheck.refunded) {
           const now = new Date();
-          await db
+          const updated = await db
             .update(donationsTable)
             .set({
               status: "refunded",
@@ -93,7 +93,21 @@ router.post("/flutterwave/webhook", async (req: RawBodyRequest, res) => {
                 // a duplicate event can't re-stamp refundedAt.
                 eq(donationsTable.status, "successful"),
               ),
-            );
+            )
+            .returning({ id: donationsTable.id });
+          if (updated.length === 0) {
+            const [record] = await db
+              .select({ status: donationsTable.status })
+              .from(donationsTable)
+              .where(eq(donationsTable.reference, reference))
+              .limit(1);
+            // A confirmed refund that arrived before charge settlement must
+            // be retried rather than silently acknowledged and lost.
+            if (record?.status === "pending") {
+              res.sendStatus(500);
+              return;
+            }
+          }
         }
       }
     }

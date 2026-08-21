@@ -520,7 +520,7 @@ const DEFAULT_PAYMENT: PaymentSettings = {
   paystackPublicKey: '',
   paystackEnabled: false,
   cardEnabled: true,
-  bankTransferEnabled: true,
+  bankTransferEnabled: false,
   cryptoEnabled: false,
   cryptoWallets: {
     bitcoin: '',
@@ -964,7 +964,7 @@ export function deleteCampaign(id: string) {
 // ── Payment Settings ──────────────────────────────────────────────────────
 export function getPaymentSettings(): PaymentSettings {
   const stored = read<PaymentSettings & { paystackSecretKey?: string }>(KEYS.payments, DEFAULT_PAYMENT);
-  // Security migration: never keep a Paystack secret key in browser storage.
+  // Legacy security migration: never keep the retired gateway secret in browser storage.
   if ('paystackSecretKey' in stored) {
     delete stored.paystackSecretKey;
     write(KEYS.payments, stored);

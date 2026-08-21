@@ -48,8 +48,8 @@ export default function Donate() {
             {/* Right Form */}
             <div className="relative">
               {/* Decorative blob behind form */}
-              <div className="absolute -top-10 -right-10 w-64 h-64 bg-secondary/30 rounded-full blur-3xl" />
-              <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
+              <div className="absolute -top-10 right-0 lg:-right-10 w-64 h-64 bg-secondary/30 rounded-full blur-3xl" />
+              <div className="absolute -bottom-10 left-0 lg:-left-10 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
               
               <div className="relative z-10">
                 <DonationForm />

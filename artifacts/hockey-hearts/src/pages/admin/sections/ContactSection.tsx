@@ -9,16 +9,28 @@ import {
   type PaymentSettings,
 } from "@/lib/contentStore";
 import { Save } from "lucide-react";
+import {
+  fetchAdminPaymentSettings,
+  saveAdminPaymentSettings,
+} from "@/lib/donationApi";
 
 export function ContactSection() {
   const [info, setInfo] = useState<ContactInfo | null>(null);
   const [payments, setPayments] = useState<PaymentSettings | null>(null);
   const [savedContact, setSavedContact] = useState(false);
   const [savedBank, setSavedBank] = useState(false);
+  const [bankError, setBankError] = useState("");
+  const [savingBank, setSavingBank] = useState(false);
 
   useEffect(() => {
     setInfo(getContactInfo());
     setPayments(getPaymentSettings());
+    fetchAdminPaymentSettings()
+      .then((serverSettings) => {
+        setPayments(serverSettings);
+        savePaymentSettings(serverSettings);
+      })
+      .catch(() => setBankError("Could not load server bank settings."));
   }, []);
 
   function handleSaveContact() {
@@ -29,12 +41,22 @@ export function ContactSection() {
     setTimeout(() => setSavedContact(false), 2500);
   }
 
-  function handleSaveBank() {
+  async function handleSaveBank() {
     if (!payments) return;
-    savePaymentSettings(payments);
-    logActivity("SAVE", "Contact", "Bank details updated");
-    setSavedBank(true);
-    setTimeout(() => setSavedBank(false), 2500);
+    setSavingBank(true);
+    setBankError("");
+    try {
+      const savedSettings = await saveAdminPaymentSettings(payments);
+      savePaymentSettings(savedSettings);
+      setPayments(savedSettings);
+      logActivity("SAVE", "Contact", "Bank details updated");
+      setSavedBank(true);
+      setTimeout(() => setSavedBank(false), 2500);
+    } catch (err) {
+      setBankError((err as Error).message || "Could not save bank settings.");
+    } finally {
+      setSavingBank(false);
+    }
   }
 
   if (!info || !payments) return null;
@@ -135,7 +157,10 @@ export function ContactSection() {
       {/* Bank details */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-5">
         <h3 className="font-bold text-gray-900">Bank Transfer Details</h3>
-        <p className="text-sm text-gray-500">Displayed to donors who choose Bank Transfer on the donation form (shown inside the secure checkout).</p>
+        <p className="text-sm text-gray-500">
+          Saved securely for the administrator's records and future manual-transfer use.
+          Flutterwave-hosted bank transfer availability is controlled in the Flutterwave dashboard.
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-gray-700">Bank Name</label>
@@ -165,10 +190,11 @@ export function ContactSection() {
       </div>
 
       <div className="flex items-center gap-4">
-        <button onClick={handleSaveBank} className="flex items-center gap-2 bg-[#0a1f44] text-white px-6 py-3 rounded-xl font-semibold hover:bg-[#0a1f44]/90 transition-colors">
-          <Save className="w-4 h-4" /> Save Bank Details
+        <button disabled={savingBank} onClick={handleSaveBank} className="flex items-center gap-2 bg-[#0a1f44] text-white px-6 py-3 rounded-xl font-semibold hover:bg-[#0a1f44]/90 transition-colors disabled:opacity-60">
+          <Save className="w-4 h-4" /> {savingBank ? "Saving…" : "Save Bank Details"}
         </button>
         {savedBank && <span className="text-green-600 text-sm font-medium">✓ Saved</span>}
+        {bankError && <span className="text-red-600 text-sm">{bankError}</span>}
       </div>
     </div>
   );
