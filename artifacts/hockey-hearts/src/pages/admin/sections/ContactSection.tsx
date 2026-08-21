@@ -76,7 +76,7 @@ export function ContactSection() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-gray-700">Primary Email *</label>
-            <input value={info.email} onChange={(e) => setInfo({ ...info, email: e.target.value })} type="email" placeholder="hockeyheartinitiative@gmail.com" className={inputCls} />
+            <input value={info.email} onChange={(e) => setInfo({ ...info, email: e.target.value })} type="email" placeholder="contact@hockeyheartinitiative.com" className={inputCls} />
           </div>
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-gray-700">Secondary Email</label>

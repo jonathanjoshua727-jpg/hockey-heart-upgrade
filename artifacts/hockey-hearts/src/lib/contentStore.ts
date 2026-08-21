@@ -661,7 +661,7 @@ const SEED_FAQS: Faq[] = [
     id: 'f6',
     question: 'What payment methods do you accept?',
     answer:
-      'We accept Bank Transfer, Credit/Debit Card, and Cryptocurrency (Bitcoin, Ethereum, USDT TRC20, USDT ERC20, and Solana). Please contact us at hockeyheartinitiative@gmail.com to complete your donation or ask about payment options.',
+      'We accept Bank Transfer, Credit/Debit Card, and Cryptocurrency (Bitcoin, Ethereum, USDT TRC20, USDT ERC20, and Solana). Please contact us at contact@hockeyheartinitiative.com to complete your donation or ask about payment options.',
     category: 'Donations',
     order: 1,
     published: true,
@@ -688,7 +688,7 @@ const SEED_FAQS: Faq[] = [
     id: 'f9',
     question: 'Can I set up a recurring donation?',
     answer:
-      'Recurring donation options are currently being configured. Please contact us at hockeyheartinitiative@gmail.com and we will set up a recurring arrangement manually.',
+      'Recurring donation options are currently being configured. Please contact us at contact@hockeyheartinitiative.com and we will set up a recurring arrangement manually.',
     category: 'Donations',
     order: 4,
     published: true,
@@ -698,7 +698,7 @@ const SEED_FAQS: Faq[] = [
     id: 'f10',
     question: 'How does a child apply for equipment assistance?',
     answer:
-      'Applications are accepted through partner rinks and community centers in our network. Contact us at hockeyheartinitiative@gmail.com with the child\'s name, age, location, and the specific need. We will connect you with the appropriate program.',
+      'Applications are accepted through partner rinks and community centers in our network. Contact us at contact@hockeyheartinitiative.com with the child\'s name, age, location, and the specific need. We will connect you with the appropriate program.',
     category: 'Programs',
     order: 0,
     published: true,
@@ -726,7 +726,7 @@ const SEED_FAQS: Faq[] = [
     id: 'f13',
     question: 'Can my organization create a fundraiser for HHI?',
     answer:
-      'Yes! Corporate and community fundraisers are welcome. Contact us at hockeyheartinitiative@gmail.com to discuss your idea and we will provide all necessary materials and guidance.',
+      'Yes! Corporate and community fundraisers are welcome. Contact us at contact@hockeyheartinitiative.com to discuss your idea and we will provide all necessary materials and guidance.',
     category: 'Campaigns & Fundraising',
     order: 0,
     published: true,
@@ -743,7 +743,7 @@ const SEED_FAQS: Faq[] = [
 ];
 
 const DEFAULT_CONTACT: ContactInfo = {
-  email: 'hockeyheartinitiative@gmail.com',
+  email: 'contact@hockeyheartinitiative.com',
   secondaryEmail: '',
   phone: '',
   whatsapp: '',
@@ -1053,7 +1053,17 @@ export function getFaqs(): Faq[] {
     write(KEYS.faqs, SEED_FAQS);
     return SEED_FAQS;
   }
-  return stored.sort((a, b) => a.order - b.order);
+  const migrated = stored.map((faq) => ({
+    ...faq,
+    answer: faq.answer.replaceAll(
+      "hockeyheartinitiative@gmail.com",
+      "contact@hockeyheartinitiative.com",
+    ),
+  }));
+  if (migrated.some((faq, index) => faq.answer !== stored[index]?.answer)) {
+    write(KEYS.faqs, migrated);
+  }
+  return migrated.sort((a, b) => a.order - b.order);
 }
 
 export function getPublishedFaqs(): Faq[] {
@@ -1074,7 +1084,13 @@ export function deleteFaq(id: string) {
 
 // ── Contact Info ──────────────────────────────────────────────────────────
 export function getContactInfo(): ContactInfo {
-  return read<ContactInfo>(KEYS.contactInfo, DEFAULT_CONTACT);
+  const stored = read<ContactInfo>(KEYS.contactInfo, DEFAULT_CONTACT);
+  if (stored.email === "hockeyheartinitiative@gmail.com") {
+    const migrated = { ...stored, email: "contact@hockeyheartinitiative.com" };
+    write(KEYS.contactInfo, migrated);
+    return migrated;
+  }
+  return stored;
 }
 
 export function saveContactInfo(info: ContactInfo) {

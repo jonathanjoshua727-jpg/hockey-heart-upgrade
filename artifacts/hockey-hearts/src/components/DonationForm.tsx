@@ -539,8 +539,8 @@ export function DonationForm() {
             ) : (
               <p className="text-sm text-muted-foreground">
                 Bank transfer payments are not yet configured. Please contact us at{" "}
-                <a href="mailto:hockeyheartinitiative@gmail.com" className="text-primary underline">
-                  hockeyheartinitiative@gmail.com
+                <a href="mailto:contact@hockeyheartinitiative.com" className="text-primary underline">
+                  contact@hockeyheartinitiative.com
                 </a>{" "}
                 to complete your donation.
               </p>
@@ -606,8 +606,8 @@ export function DonationForm() {
             ) : (
               <p className="text-sm text-muted-foreground">
                 Cryptocurrency wallets are being configured. Please contact{" "}
-                <a href="mailto:hockeyheartinitiative@gmail.com" className="text-primary underline">
-                  hockeyheartinitiative@gmail.com
+                <a href="mailto:contact@hockeyheartinitiative.com" className="text-primary underline">
+                  contact@hockeyheartinitiative.com
                 </a>{" "}
                 to donate via crypto.
               </p>
@@ -619,8 +619,8 @@ export function DonationForm() {
           <div className="bg-muted/40 border border-border rounded-xl p-4">
             <p className="text-sm text-muted-foreground">
               Card payments are being configured. Please use Bank Transfer or contact us at{" "}
-              <a href="mailto:hockeyheartinitiative@gmail.com" className="text-primary underline">
-                hockeyheartinitiative@gmail.com
+              <a href="mailto:contact@hockeyheartinitiative.com" className="text-primary underline">
+                contact@hockeyheartinitiative.com
               </a>
               .
             </p>

@@ -98,8 +98,8 @@ export default function Terms() {
               <h2 className="font-serif text-2xl font-bold text-primary">10. Contact</h2>
               <p className="text-muted-foreground leading-relaxed">
                 For questions about these terms, contact:{" "}
-                <a href="mailto:hockeyheartinitiative@gmail.com" className="text-primary underline">
-                  hockeyheartinitiative@gmail.com
+                <a href="mailto:contact@hockeyheartinitiative.com" className="text-primary underline">
+                  contact@hockeyheartinitiative.com
                 </a>
               </p>
             </div>
