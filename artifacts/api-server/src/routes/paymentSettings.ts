@@ -12,6 +12,7 @@ const text = (max: number) => z.string().trim().max(max);
 const paymentSettingsSchema = z.object({
   cardEnabled: z.boolean(),
   bankTransferEnabled: z.boolean(),
+  bankTransferProviderName: z.string().trim().min(1).max(120),
   cryptoEnabled: z.boolean(),
   cryptoWallets: z.object({
     bitcoin: text(300),
@@ -36,6 +37,7 @@ router.get("/payment-settings", async (_req, res) => {
   res.json({
     cardEnabled: settings.cardEnabled,
     bankTransferEnabled: settings.bankTransferEnabled,
+    bankTransferProviderName: settings.bankTransferProviderName,
     cryptoEnabled: settings.cryptoEnabled,
     cryptoWallets: settings.cryptoWallets,
   });

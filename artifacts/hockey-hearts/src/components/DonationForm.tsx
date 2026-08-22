@@ -44,13 +44,31 @@ const CRYPTO_OPTIONS: { key: CryptoKey; label: string }[] = [
   { key: "solana", label: "Solana (SOL)" },
 ];
 
+function safeInitialPaymentSettings(): PaymentSettings {
+  const cached = getPaymentSettings();
+  return {
+    ...cached,
+    cardEnabled: true,
+    bankTransferEnabled: false,
+    bankTransferProviderName: "Flutterwave",
+    cryptoEnabled: false,
+    cryptoWallets: {
+      bitcoin: "",
+      ethereum: "",
+      usdtTrc20: "",
+      usdtErc20: "",
+      solana: "",
+    },
+  };
+}
+
 function randomRef() {
   return "HHI-" + Date.now().toString(36).toUpperCase() + "-" + Math.random().toString(36).slice(2, 8).toUpperCase();
 }
 
 export function DonationForm() {
-  const [settings, setSettings] = useState<PaymentSettings>(() =>
-    getPaymentSettings(),
+  const [settings, setSettings] = useState<PaymentSettings>(
+    safeInitialPaymentSettings,
   );
   const causes = getActiveDonationCauses();
 
@@ -62,7 +80,7 @@ export function DonationForm() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [anonymous, setAnonymous] = useState(false);
-  const [method, setMethod] = useState<PayMethod>("bank");
+  const [method, setMethod] = useState<PayMethod>("card");
   const [cryptoCoin, setCryptoCoin] = useState<CryptoKey>("bitcoin");
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -84,6 +102,10 @@ export function DonationForm() {
   const bankConfigured = settings.bankTransferEnabled;
   const cardConfigured = settings.cardEnabled;
   const cryptoConfigured = settings.cryptoEnabled;
+  const selectedMethodConfigured =
+    (method === "bank" && bankConfigured) ||
+    (method === "card" && cardConfigured) ||
+    (method === "crypto" && cryptoConfigured);
 
   useEffect(() => {
     trackClick('Donation Page', 'donation_page_visit', window.location.pathname, window.location.pathname);
@@ -478,7 +500,9 @@ export function DonationForm() {
           {[
             {
               id: "bank" as PayMethod,
-              label: "Bank Transfer",
+              label: settings.bankTransferProviderName
+                ? `Bank Transfer via ${settings.bankTransferProviderName}`
+                : "Bank Transfer",
               tag: "Recommended",
               enabled: bankConfigured,
             },
@@ -525,26 +549,16 @@ export function DonationForm() {
         </div>
 
         {/* Bank Transfer Info */}
-        {method === "bank" && (
+        {method === "bank" && bankConfigured && (
           <div className="bg-muted/40 border border-border rounded-xl p-5 space-y-2">
-            {bankConfigured ? (
-              <>
-                <p className="text-sm font-semibold text-foreground">How it works</p>
-                <p className="text-sm text-muted-foreground">
-                  After clicking the button below, you'll be taken to a secure checkout page
-                  showing the transfer options available in your region. Your donation is
-                  confirmed automatically once the payment is received.
-                </p>
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Bank transfer payments are not yet configured. Please contact us at{" "}
-                <a href="mailto:contact@hockeyheartinitiative.com" className="text-primary underline">
-                  contact@hockeyheartinitiative.com
-                </a>{" "}
-                to complete your donation.
-              </p>
-            )}
+            <p className="text-sm font-semibold text-foreground">
+              Bank transfer via {settings.bankTransferProviderName || "our payment provider"}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              After clicking the button below, you'll be taken to a secure checkout page
+              showing the transfer options available in your region. Your donation is
+              confirmed automatically once the payment is received.
+            </p>
           </div>
         )}
 
@@ -639,9 +653,13 @@ export function DonationForm() {
       <Button
         size="lg"
         type="button"
-        disabled={loading}
+        disabled={loading || !selectedMethodConfigured}
         onClick={() => {
           setError("");
+          if (!selectedMethodConfigured) {
+            setError("This payment method is not currently available.");
+            return;
+          }
           if (method === "bank") handleBankTransfer();
           else if (method === "card") handleCard();
           else if (method === "crypto") {

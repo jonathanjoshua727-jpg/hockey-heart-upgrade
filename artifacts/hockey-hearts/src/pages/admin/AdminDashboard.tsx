@@ -15,7 +15,6 @@ import { HomepageSection } from "./sections/HomepageSection";
 import { ImagesSection } from "./sections/ImagesSection";
 import { ContactSection } from "./sections/ContactSection";
 import { FaqSection } from "./sections/FaqSection";
-import { WebsiteSettingsSection } from "./sections/WebsiteSettingsSection";
 import { UsersSection } from "./sections/UsersSection";
 import { AnalyticsSection } from "./sections/AnalyticsSection";
 import { PagesSection } from "./sections/PagesSection";
@@ -23,7 +22,7 @@ import { LegalSection } from "./sections/LegalSection";
 import { SupportersSection } from "./sections/SupportersSection";
 import { ImpactSection } from "./sections/ImpactSection";
 import {
-  CircleDot, LayoutDashboard, FileText, Target, CreditCard, Activity,
+  CircleDot, LayoutDashboard, FileText, Target, Activity,
   LogOut, Menu, ExternalLink, Heart, DollarSign, Image, Phone,
   HelpCircle, BarChart3, Users, Home, BookOpen, Wrench, Scale,
   Award, TrendingUp,
@@ -32,7 +31,7 @@ import {
 type Section =
   | "overview" | "analytics" | "donations" | "causes" | "campaigns"
   | "programs" | "news" | "homepage" | "images" | "pages"
-  | "contact" | "faq" | "settings" | "payments" | "users"
+  | "contact" | "faq" | "payments" | "users"
   | "activity" | "legal" | "supporters" | "impact";
 
 interface NavItem { id: Section; label: string; icon: React.ElementType; group?: string; }
@@ -53,7 +52,6 @@ const NAV_ITEMS: NavItem[] = [
   { id: "contact",    label: "Contact Info",       icon: Phone,           group: "Settings" },
   { id: "faq",        label: "FAQs",               icon: HelpCircle,      group: "Settings" },
   { id: "legal",      label: "Legal & Registration", icon: Scale,         group: "Settings" },
-  { id: "settings",   label: "Payment Config",     icon: CreditCard,      group: "Settings" },
   { id: "payments",   label: "Payment Methods",    icon: Wrench,          group: "Settings" },
   { id: "users",      label: "Users",              icon: Users,           group: "Settings" },
   { id: "activity",   label: "Activity Log",       icon: Activity,        group: "Settings" },
@@ -96,7 +94,6 @@ export default function AdminDashboard() {
       case "contact":    return <ContactSection />;
       case "faq":        return <FaqSection />;
       case "legal":      return <LegalSection />;
-      case "settings":   return <WebsiteSettingsSection />;
       case "payments":   return <PaymentSection />;
       case "users":      return <UsersSection />;
       case "activity":   return <ActivitySection />;

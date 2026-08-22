@@ -3,6 +3,7 @@ import { db, paymentSettingsTable, type PaymentSetting } from "@workspace/db";
 export interface PublicPaymentSettings {
   cardEnabled: boolean;
   bankTransferEnabled: boolean;
+  bankTransferProviderName: string;
   cryptoEnabled: boolean;
   cryptoWallets: {
     bitcoin: string;
@@ -24,6 +25,7 @@ export interface PublicPaymentSettings {
 export const DEFAULT_PAYMENT_SETTINGS: PublicPaymentSettings = {
   cardEnabled: true,
   bankTransferEnabled: false,
+  bankTransferProviderName: "Flutterwave",
   cryptoEnabled: false,
   cryptoWallets: {
     bitcoin: "",
@@ -43,10 +45,55 @@ export const DEFAULT_PAYMENT_SETTINGS: PublicPaymentSettings = {
   },
 };
 
+const BANK_PROFILE_PREFIX = "hhi-provider-profile:v1:";
+
+function decodeBankProfile(rawBankName: string): {
+  providerName: string;
+  bankName: string;
+} {
+  if (!rawBankName.startsWith(BANK_PROFILE_PREFIX)) {
+    return {
+      providerName: DEFAULT_PAYMENT_SETTINGS.bankTransferProviderName,
+      bankName: rawBankName,
+    };
+  }
+
+  try {
+    const parsed = JSON.parse(rawBankName.slice(BANK_PROFILE_PREFIX.length)) as {
+      providerName?: unknown;
+      bankName?: unknown;
+    };
+    if (
+      typeof parsed.providerName === "string" &&
+      parsed.providerName.trim() &&
+      typeof parsed.bankName === "string"
+    ) {
+      return {
+        providerName: parsed.providerName,
+        bankName: parsed.bankName,
+      };
+    }
+  } catch {
+    // Malformed tagged values stay private and fall back to the connected
+    // provider label rather than being reflected to public donors.
+  }
+
+  return {
+    providerName: DEFAULT_PAYMENT_SETTINGS.bankTransferProviderName,
+    bankName: "",
+  };
+}
+
+function encodeBankProfile(providerName: string, bankName: string): string {
+  return `${BANK_PROFILE_PREFIX}${JSON.stringify({ providerName, bankName })}`;
+}
+
 function toPublic(row: PaymentSetting): PublicPaymentSettings {
+  const bankProfile = decodeBankProfile(row.bankName);
   return {
     cardEnabled: row.cardEnabled,
     bankTransferEnabled: row.bankTransferEnabled,
+    bankTransferProviderName: bankProfile.providerName,
     cryptoEnabled: row.cryptoEnabled,
     cryptoWallets: {
       bitcoin: row.bitcoinWallet,
@@ -56,7 +103,7 @@ function toPublic(row: PaymentSetting): PublicPaymentSettings {
       solana: row.solanaWallet,
     },
     bankDetails: {
-      bankName: row.bankName,
+      bankName: bankProfile.bankName,
       accountName: row.accountName,
       accountNumber: row.accountNumber,
       routingNumber: row.routingNumber,
@@ -85,7 +132,10 @@ export async function savePaymentSettings(
     usdtTrc20Wallet: settings.cryptoWallets.usdtTrc20,
     usdtErc20Wallet: settings.cryptoWallets.usdtErc20,
     solanaWallet: settings.cryptoWallets.solana,
-    bankName: settings.bankDetails.bankName,
+    bankName: encodeBankProfile(
+      settings.bankTransferProviderName,
+      settings.bankDetails.bankName,
+    ),
     accountName: settings.bankDetails.accountName,
     accountNumber: settings.bankDetails.accountNumber,
     routingNumber: settings.bankDetails.routingNumber,

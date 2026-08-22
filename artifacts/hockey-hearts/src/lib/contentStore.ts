@@ -40,6 +40,7 @@ export interface PaymentSettings {
   paystackEnabled: boolean;
   cardEnabled: boolean;
   bankTransferEnabled: boolean;
+  bankTransferProviderName: string;
   cryptoEnabled: boolean;
   cryptoWallets: {
     bitcoin: string;
@@ -521,6 +522,7 @@ const DEFAULT_PAYMENT: PaymentSettings = {
   paystackEnabled: false,
   cardEnabled: true,
   bankTransferEnabled: false,
+  bankTransferProviderName: 'Flutterwave',
   cryptoEnabled: false,
   cryptoWallets: {
     bitcoin: '',
@@ -531,12 +533,11 @@ const DEFAULT_PAYMENT: PaymentSettings = {
   },
   bankDetails: {
     bankName: '',
-    accountName: 'Hockey Heart Initiative',
+    accountName: '',
     accountNumber: '',
     routingNumber: '',
     swiftCode: '',
-    instructions:
-      'Please include your full name and email address as the payment reference so we can match your donation.',
+    instructions: '',
   },
 };
 
@@ -964,16 +965,33 @@ export function deleteCampaign(id: string) {
 // ── Payment Settings ──────────────────────────────────────────────────────
 export function getPaymentSettings(): PaymentSettings {
   const stored = read<PaymentSettings & { paystackSecretKey?: string }>(KEYS.payments, DEFAULT_PAYMENT);
+  let changed = false;
+  if (!stored.bankTransferProviderName) {
+    stored.bankTransferProviderName = DEFAULT_PAYMENT.bankTransferProviderName;
+    changed = true;
+  }
   // Legacy security migration: never keep the retired gateway secret in browser storage.
   if ('paystackSecretKey' in stored) {
     delete stored.paystackSecretKey;
+    changed = true;
+  }
+  // Authenticated bank-account fields belong only in PostgreSQL and component
+  // memory. Scrub values cached by older admin screens from localStorage.
+  if (Object.values(stored.bankDetails).some(Boolean)) {
+    stored.bankDetails = { ...DEFAULT_PAYMENT.bankDetails };
+    changed = true;
+  }
+  if (changed) {
     write(KEYS.payments, stored);
   }
   return stored;
 }
 
 export function savePaymentSettings(settings: PaymentSettings) {
-  write(KEYS.payments, settings);
+  write(KEYS.payments, {
+    ...settings,
+    bankDetails: { ...DEFAULT_PAYMENT.bankDetails },
+  });
 }
 
 // ── Transactions ──────────────────────────────────────────────────────────

@@ -73,7 +73,11 @@ type ServerPaymentSettings = Omit<
 >;
 type DonorPaymentSettings = Pick<
   ServerPaymentSettings,
-  "cardEnabled" | "bankTransferEnabled" | "cryptoEnabled" | "cryptoWallets"
+  | "cardEnabled"
+  | "bankTransferEnabled"
+  | "bankTransferProviderName"
+  | "cryptoEnabled"
+  | "cryptoWallets"
 >;
 
 function withLegacyCompatibility(

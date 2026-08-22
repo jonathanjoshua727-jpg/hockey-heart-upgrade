@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { getPaymentSettings, savePaymentSettings, logActivity, type PaymentSettings } from "@/lib/contentStore";
+import { getPaymentSettings, logActivity, type PaymentSettings } from "@/lib/contentStore";
 import { Save, Eye, EyeOff, ShieldAlert, Bitcoin, Wallet } from "lucide-react";
 import {
   fetchAdminPaymentSettings,
@@ -17,7 +17,6 @@ export function PaymentSection() {
     fetchAdminPaymentSettings()
       .then((serverSettings) => {
         setSettings(serverSettings);
-        savePaymentSettings(serverSettings);
       })
       .catch(() => setSaveError("Could not load server payment settings."));
   }, []);
@@ -30,7 +29,6 @@ export function PaymentSection() {
     setSaveError("");
     try {
       const savedSettings = await saveAdminPaymentSettings(settings);
-      savePaymentSettings(savedSettings);
       setSettings(savedSettings);
       logActivity("SAVE", "Payments", "Payment settings updated");
       setSaved(true);
@@ -51,6 +49,21 @@ export function PaymentSection() {
       v && { ...v, cryptoWallets: { ...v.cryptoWallets, [key]: value } }
     );
   }
+
+  function updateBankDetail(
+    key: keyof PaymentSettings["bankDetails"],
+    value: string,
+  ) {
+    setSettings((current) =>
+      current && {
+        ...current,
+        bankDetails: { ...current.bankDetails, [key]: value },
+      },
+    );
+  }
+
+  const inputCls =
+    "w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0a1f44]/20 focus:border-[#0a1f44]";
 
   return (
     <div className="space-y-8">
@@ -97,6 +110,82 @@ export function PaymentSection() {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Bank transfer provider profile */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-5">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+            <Wallet className="w-4 h-4 text-blue-600" />
+          </div>
+          <div>
+            <h3 className="font-bold text-gray-900">Bank Transfer Provider Profile</h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              The provider name is shown to donors when bank transfer is enabled.
+            </p>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+          Changing this profile does not connect a new payment gateway. A new provider still
+          requires a secure server-side integration, credentials, webhooks, and payment
+          verification before you enable bank transfer.
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium text-gray-700">
+            Provider / bank display name
+          </label>
+          <input
+            value={settings.bankTransferProviderName}
+            onChange={(event) =>
+              update({ bankTransferProviderName: event.target.value })
+            }
+            placeholder="e.g. Flutterwave"
+            className={inputCls}
+          />
+          <p className="text-xs text-gray-500">
+            This name must match the gateway currently connected by the server.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {([
+            { key: "bankName", label: "Bank Name", placeholder: "e.g. Chase Bank" },
+            { key: "accountName", label: "Account Name", placeholder: "Hockey Heart Initiative" },
+            { key: "accountNumber", label: "Account Number", placeholder: "XXXXXXXXXXXX" },
+            { key: "routingNumber", label: "Routing Number (ABA)", placeholder: "XXXXXXXXX" },
+            { key: "swiftCode", label: "SWIFT / BIC Code", placeholder: "e.g. CHASUS33" },
+          ] as const).map(({ key, label, placeholder }) => (
+            <div key={key} className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700">{label}</label>
+              <input
+                value={settings.bankDetails[key]}
+                onChange={(event) => updateBankDetail(key, event.target.value)}
+                placeholder={placeholder}
+                className={inputCls}
+              />
+            </div>
+          ))}
+          <div className="space-y-1.5 md:col-span-2">
+            <label className="text-sm font-medium text-gray-700">
+              Transfer instructions
+            </label>
+            <textarea
+              value={settings.bankDetails.instructions}
+              onChange={(event) =>
+                updateBankDetail("instructions", event.target.value)
+              }
+              rows={3}
+              className={`${inputCls} resize-none`}
+              placeholder="Include the donor's name and email as the payment reference..."
+            />
+            <p className="text-xs text-gray-500">
+              Account details and instructions remain admin-only while bank transfer uses
+              hosted checkout.
+            </p>
+          </div>
         </div>
       </div>
 
