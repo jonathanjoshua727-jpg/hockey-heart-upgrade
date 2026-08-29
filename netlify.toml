@@ -1,0 +1,13 @@
+[build]
+  base = "/"
+  command = "pnpm --filter @workspace/hockey-hearts run build"
+  publish = "artifacts/hockey-hearts/dist/public"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_FLAGS = "--version"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
