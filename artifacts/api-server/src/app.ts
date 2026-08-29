@@ -10,7 +10,7 @@ const app: Express = express();
 // dev preview and in production deployments. Trust exactly that hop so
 // req.ip reflects the real client IP for rate limiting — never `true`, which
 // would let clients spoof X-Forwarded-For.
-app.set("trust proxy", 1);
+app.set("trust proxy", process.env.TRUST_PROXY === "true" ? 1 : false);
 
 app.use(
   pinoHttp({
