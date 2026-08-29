@@ -1,48 +1,50 @@
-import path from 'path';
-import react from '@vitejs/plugin-react';
-import tailwindcss from '@tailwindcss/vite';
-import { defineConfig } from 'vite';
-const rawPort = process.env.PORT;
-const port = rawPort ? Number(rawPort) : 5173;
-if (Number.isNaN(port) || port <= 0) {
+import path from "path";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import { defineConfig } from "vite";
+const rawPort = process.env.PORT || "5173";
+const port = Number(rawPort);
+if (!Number.isInteger(port) || port <= 0 || port > 65535) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
-const basePath = process.env.BASE_PATH || '/';
 export default defineConfig({
-  base: basePath,
+  root: path.resolve(import.meta.dirname),
+  // Production site is hosted at the domain root.
+  base: "/",
   plugins: [
     react(),
     tailwindcss(),
   ],
   resolve: {
     alias: {
-      '@': path.resolve(import.meta.dirname, 'src'),
-      '@assets': path.resolve(
+      "@": path.resolve(import.meta.dirname, "src"),
+      "@assets": path.resolve(
         import.meta.dirname,
-        '..',
-        '..',
-        'attached_assets',
+        "..",
+        "..",
+        "attached_assets",
       ),
     },
-    dedupe: ['react', 'react-dom'],
+    dedupe: ["react", "react-dom"],
   },
-  root: path.resolve(import.meta.dirname),
   build: {
-    outDir: path.resolve(import.meta.dirname, 'dist/public'),
+    outDir: path.resolve(
+      import.meta.dirname,
+      "dist/public",
+    ),
     emptyOutDir: true,
   },
   server: {
+    host: "0.0.0.0",
     port,
     strictPort: true,
-    host: '0.0.0.0',
-    allowedHosts: true,
     fs: {
       strict: true,
     },
   },
   preview: {
+    host: "0.0.0.0",
     port,
-    host: '0.0.0.0',
-    allowedHosts: true,
+    strictPort: true,
   },
 });
