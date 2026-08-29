@@ -6,12 +6,9 @@ import { logger } from "./lib/logger";
 
 const app: Express = express();
 
-// The app is always reached through Replit's reverse proxy (one hop), both in
-// dev preview and in production deployments. Trust exactly that hop so
-// req.ip reflects the real client IP for rate limiting — never `true`, which
-// would let clients spoof X-Forwarded-For.
+// Trust the proxy only when explicitly enabled.
+// Replit can set TRUST_PROXY=true; Netlify should leave it unset.
 app.set("trust proxy", process.env.TRUST_PROXY === "true" ? 1 : false);
-
 app.use(
   pinoHttp({
     logger,
