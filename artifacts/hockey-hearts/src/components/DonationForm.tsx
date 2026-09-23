@@ -13,11 +13,8 @@ import {
 } from "@/lib/contentStore";
 import { CheckCircle2, Copy } from "lucide-react";
 import { trackClick } from "@/lib/analytics";
-import {
-  fetchPublicPaymentSettings,
-  initializeDonation,
-  verifyDonation,
-} from "@/lib/donationApi";
+import { verifyDonation } from "@/lib/donationApi";
+
 const PRESET_AMOUNTS = [50, 100, 250, 500];
 const PENDING_KEY = "hhi_pending_donation";
 const DONATION_CONTACT_EMAIL = "contact@hockeyheartinitiative.com";
@@ -49,13 +46,18 @@ function getSafeInitialSettings(): PaymentSettings {
     const cached = getPaymentSettings();
     return {
       ...cached,
+      // No hosted provider is active. Card and bank requests use email below.
       cardEnabled: true,
       bankTransferEnabled: true,
       bankTransferProviderName:
         cached.bankTransferProviderName || "Email donation request",
-      cryptoEnabled: false,
+      cryptoEnabled: Boolean(cached.cryptoEnabled),
       cryptoWallets: {
         ...EMPTY_CRYPTO_WALLETS,
+        ...(cached.cryptoWallets ?? {}),
+      },
+      bankDetails: {
+        ...cached.bankDetails,
       },
     };
   } catch {
@@ -66,9 +68,7 @@ function getSafeInitialSettings(): PaymentSettings {
       bankTransferEnabled: true,
       bankTransferProviderName: "Email donation request",
       cryptoEnabled: false,
-      cryptoWallets: {
-        ...EMPTY_CRYPTO_WALLETS,
-      },
+      cryptoWallets: { ...EMPTY_CRYPTO_WALLETS },
       bankDetails: {
         bankName: "",
         accountName: "",
@@ -98,22 +98,16 @@ function randomRef() {
     Math.random().toString(36).slice(2, 8).toUpperCase()
   );
 }
-function safeTrackClick(
-  page: string,
-  action: string,
-  source: string,
-  target: string,
-) {
+function safeTrackClick(page: string, action: string, source: string, target: string) {
   try {
     trackClick(page, action, source, target);
   } catch {
     // Analytics must never prevent the donation page from rendering.
   }
 }
+
 export function DonationForm() {
-  const [settings, setSettings] = useState<PaymentSettings>(
-    getSafeInitialSettings,
-  );
+  const [settings] = useState<PaymentSettings>(getSafeInitialSettings);
   const causes = useMemo(() => getSafeCauses(), []);
   const [amount, setAmount] = useState<number | "custom">(50);
   const [customAmount, setCustomAmount] = useState("");
@@ -135,298 +129,90 @@ export function DonationForm() {
     email?: string;
   } | null>(null);
   const [error, setError] = useState("");
-  const finalAmount =
-    amount === "custom"
-      ? Number.parseFloat(customAmount || "0")
-      : amount;
-  const causeLabel =
-    causes.find((item) => item.id === cause)?.label ??
-    "Where Needed Most";
-  const selectedCryptoAddress =
-    settings.cryptoWallets?.[cryptoCoin] ?? "";
-  const bankConfigured = settings.bankTransferEnabled;
-  const cardConfigured = settings.cardEnabled;
-  const cryptoConfigured = settings.cryptoEnabled;
-  const selectedMethodConfigured =
-    (method === "bank" && bankConfigured) ||
-    (method === "card" && cardConfigured) ||
-    (method === "crypto" && cryptoConfigured);
+  const finalAmount = amount === "custom" ? Number.parseFloat(customAmount || "0") : amount;
+  const causeLabel = causes.find((item) => item.id === cause)?.label ?? "Where Needed Most";
+  const selectedCryptoAddress = settings.cryptoWallets?.[cryptoCoin] ?? "";
+  const selectedCryptoConfigured = settings.cryptoEnabled;
+
   useEffect(() => {
-    safeTrackClick(
-      "Donation Page",
-      "donation_page_visit",
-      window.location.pathname,
-      window.location.pathname,
-    );
+    safeTrackClick("Donation Page", "donation_page_visit", window.location.pathname, window.location.pathname);
   }, []);
-  useEffect(() => {
-    let active = true;
-    fetchPublicPaymentSettings()
-      .then((serverSettings) => {
-        if (!active) return;
-        setSettings((current) => ({
-          ...current,
-          ...serverSettings,
-          bankDetails:
-            serverSettings.bankDetails ?? current.bankDetails,
-        }));
-      })
-      .catch(() => {
-        // Keep the safe local defaults.
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-  useEffect(() => {
-    const selectedEnabled =
-      (method === "bank" && settings.bankTransferEnabled) ||
-      (method === "card" && settings.cardEnabled) ||
-      (method === "crypto" && settings.cryptoEnabled);
-    if (selectedEnabled) return;
-    if (settings.cardEnabled) {
-      setMethod("card");
-    } else if (settings.bankTransferEnabled) {
-      setMethod("bank");
-    } else if (settings.cryptoEnabled) {
-      setMethod("crypto");
-    }
-  }, [
-    method,
-    settings.bankTransferEnabled,
-    settings.cardEnabled,
-    settings.cryptoEnabled,
-  ]);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const txRef = params.get("tx_ref");
     if (!txRef) return;
     let pending: PendingDonation | null = null;
     try {
-      pending = JSON.parse(
-        sessionStorage.getItem(PENDING_KEY) ?? "null",
-      );
+      pending = JSON.parse(sessionStorage.getItem(PENDING_KEY) ?? "null");
     } catch {
       pending = null;
     }
     sessionStorage.removeItem(PENDING_KEY);
-    window.history.replaceState(
-      {},
-      "",
-      window.location.pathname,
-    );
+    window.history.replaceState({}, "", window.location.pathname);
     setLoading(true);
     verifyDonation(txRef)
       .then((result) => {
         setLoading(false);
         if (result.verified && result.donation) {
-          safeTrackClick(
-            "Donation Completed",
-            "donation_success",
-            "/donate",
-            window.location.pathname,
-          );
+          safeTrackClick("Donation Completed", "donation_success", "/donate", window.location.pathname);
           setSuccess({
             reference: result.donation.reference,
-            methodLabel:
-              pending?.methodLabel ?? "Secure Checkout",
+            methodLabel: pending?.methodLabel ?? "Secure Checkout",
             amount: result.donation.amount,
             causeLabel: result.donation.causeLabel,
             email: pending?.email,
           });
         } else {
-          safeTrackClick(
-            "Verification Failed",
-            "donation_failed",
-            "/donate",
-            window.location.pathname,
-          );
-          setError(
-            result.error ??
-              "We couldn't complete your donation. No successful donation was recorded. Please try again.",
-          );
+          setError(result.error ?? "We couldn't complete your donation. Please try again.");
         }
       })
       .catch(() => {
         setLoading(false);
-        safeTrackClick(
-          "Verification Failed",
-          "donation_failed",
-          "/donate",
-          window.location.pathname,
-        );
-        setError(
-          "We couldn't complete your donation. No successful donation was recorded. Please try again.",
-        );
+        setError("We couldn't verify that donation. Please contact us if you were charged.");
       });
   }, []);
-  function copyAddress() {
-    if (!selectedCryptoAddress) return;
-    try {
-      navigator.clipboard
-        ?.writeText(selectedCryptoAddress)
-        .then(() => {
-          setCopied(true);
-          window.setTimeout(
-            () => setCopied(false),
-            2000,
-          );
-        })
-        .catch(() => {
-          setError(
-            "Unable to copy the wallet address. Please copy it manually.",
-          );
-        });
-    } catch {
-      setError(
-        "Unable to copy the wallet address. Please copy it manually.",
-      );
-    }
-  }
+
   function validate(): string {
-    if (
-      !Number.isFinite(finalAmount) ||
-      finalAmount < 50
-    ) {
-      return "Minimum donation is $50 USD.";
-    }
-    if (!email.trim() || !email.includes("@")) {
-      return "Please enter a valid email address.";
-    }
-    if (!anonymous && !firstName.trim()) {
-      return "Please enter your first name.";
-    }
+    if (!Number.isFinite(finalAmount) || finalAmount < 50) return "Minimum donation is $50 USD.";
+    if (!email.trim() || !email.includes("@")) return "Please enter a valid email address.";
+    if (!anonymous && !firstName.trim()) return "Please enter your first name.";
     return "";
   }
-  function recordTransaction(
-    reference: string,
-    payMethod: string,
-    status: Transaction["status"],
-  ) {
-    const tx: Transaction = {
-      id: crypto.randomUUID(),
-      date: new Date().toISOString(),
-      amount: finalAmount,
-      currency: "USD",
-      method: payMethod,
-      status,
-      donorName: anonymous
-        ? "Anonymous"
-        : `${firstName.trim()} ${lastName.trim()}`.trim(),
-      donorEmail: email.trim(),
-      cause: causeLabel,
-      reference,
-      anonymous,
-      notes: message.trim() || undefined,
-    };
-    try {
-      saveTransaction(tx);
-    } catch {
-      // Local transaction storage must not prevent the donor flow.
-    }
-  }
-  function openDonationEmailRequest(method: "bank_transfer" | "card") {
+
+  function openDonationEmailRequest(requestedMethod: "bank_transfer" | "card") {
     const validationError = validate();
     if (validationError) {
       setError(validationError);
       return;
     }
-
-    const methodLabel =
-      method === "bank_transfer" ? "Bank Transfer" : "Credit / Debit Card";
-
-    const donorName = anonymous
-      ? "Anonymous"
-      : `${firstName.trim()} ${lastName.trim()}`.trim();
-
-    const subject = encodeURIComponent(
-      `Donation request: ${methodLabel} - $${finalAmount.toLocaleString()} USD`,
-    );
-
-    const body = encodeURIComponent(
-      [
-        "Hello Hockey Heart Initiative,",
-        "",
-        "I would like to make a donation.",
-        `Method: ${methodLabel}`,
-        `Amount: $${finalAmount.toLocaleString()} USD`,
-        `Cause: ${causeLabel}`,
-        `Donor Name: ${donorName}`,
-        `Email: ${email.trim()}`,
-        `Anonymous: ${anonymous ? "Yes" : "No"}`,
-        message.trim() ? `Message: ${message.trim()}` : "",
-        "",
-        "Please contact me to arrange payment.",
-      ].join("\n"),
-    );
-
-    window.location.href = `mailto:${DONATION_CONTACT_EMAIL}?subject=${subject}&body=${body}`;
+    const methodLabel = requestedMethod === "bank_transfer" ? "Bank Transfer" : "Credit / Debit Card";
+    const donorName = anonymous ? "Anonymous" : `${firstName.trim()} ${lastName.trim()}`.trim();
+    const subject = encodeURIComponent(`Donation request: ${methodLabel} - $${finalAmount.toLocaleString()} USD`);
+    const body = encodeURIComponent([
+      "Hello Hockey Heart Initiative,", "", "I would like to make a donation.",
+      `Method: ${methodLabel}`, `Amount: $${finalAmount.toLocaleString()} USD`,
+      `Cause: ${causeLabel}`, `Donor Name: ${donorName}`, `Email: ${email.trim()}`,
+      `Anonymous: ${anonymous ? "Yes" : "No"}`, message.trim() ? `Message: ${message.trim()}` : "",
+      "", "Please contact me to arrange payment.",
+    ].join("\n"));
+    window.location.assign(`mailto:${DONATION_CONTACT_EMAIL}?subject=${subject}&body=${body}`);
   }
-  async function handleGatewayDonation(
-    payMethod: "bank_transfer" | "card",
-  ) {
-    const validationError = validate();
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-    const methodLabel =
-      payMethod === "bank_transfer"
-        ? "Bank Transfer"
-        : "Credit/Debit Card";
-    setLoading(true);
-    setError("");
+
+  function recordTransaction(reference: string, payMethod: string) {
     try {
-      const init = await initializeDonation({
-        amount: finalAmount,
-        causeId: cause,
-        causeLabel,
-        donorName: anonymous
-          ? "Anonymous"
-          : `${firstName.trim()} ${lastName.trim()}`.trim(),
-        email: email.trim(),
-        anonymous,
-        message: message.trim() || undefined,
-        method: payMethod,
-        redirectPath: window.location.pathname,
+      saveTransaction({
+        id: crypto.randomUUID(), date: new Date().toISOString(), amount: finalAmount,
+        currency: "USD", method: payMethod, status: "pending",
+        donorName: anonymous ? "Anonymous" : `${firstName.trim()} ${lastName.trim()}`.trim(),
+        donorEmail: email.trim(), cause: causeLabel, reference, anonymous,
+        notes: message.trim() || undefined,
       });
-      const pending: PendingDonation = {
-        reference: init.reference,
-        amount: finalAmount,
-        causeLabel,
-        email: email.trim(),
-        methodLabel,
-      };
-      try {
-        sessionStorage.setItem(
-          PENDING_KEY,
-          JSON.stringify(pending),
-        );
-      } catch {
-        // The server reference remains authoritative.
-      }
-      safeTrackClick(
-        `Checkout Started (${methodLabel})`,
-        "checkout_start",
-        "/donate",
-        window.location.pathname,
-      );
-      window.location.assign(init.paymentLink);
-    } catch (e) {
-      setLoading(false);
-      setError(
-        e instanceof Error && e.message
-          ? e.message
-          : "Failed to start your donation. Please try again or contact us.",
-      );
+    } catch {
+      // Local storage must not prevent the donor flow.
     }
   }
-  function handleBankTransfer() {
-    openDonationEmailRequest("bank_transfer");
-  }
-  function handleCard() {
-    openDonationEmailRequest("card");
-  }
+
   function handleCryptoConfirm() {
     const validationError = validate();
     if (validationError) {
@@ -434,591 +220,58 @@ export function DonationForm() {
       return;
     }
     if (!selectedCryptoAddress) {
-      setError(
-        "Selected cryptocurrency wallet address is not configured yet.",
-      );
+      setError("Selected cryptocurrency wallet address is not configured yet.");
       return;
     }
     const ref = randomRef();
-    const coinLabel =
-      CRYPTO_OPTIONS.find(
-        (item) => item.key === cryptoCoin,
-      )?.label ?? cryptoCoin;
-    recordTransaction(
-      ref,
-      `crypto_${cryptoCoin}`,
-      "pending",
-    );
-    setSuccess({
-      reference: ref,
-      methodLabel: `Cryptocurrency (${coinLabel})`,
-      amount: finalAmount,
-      causeLabel,
-      email: email.trim(),
-    });
+    const coinLabel = CRYPTO_OPTIONS.find((item) => item.key === cryptoCoin)?.label ?? cryptoCoin;
+    recordTransaction(ref, `crypto_${cryptoCoin}`);
+    setSuccess({ reference: ref, methodLabel: `Cryptocurrency (${coinLabel})`, amount: finalAmount, causeLabel, email: email.trim() });
   }
+
   if (success) {
-    const donationDate = new Date().toLocaleDateString(
-      "en-US",
-      {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      },
-    );
-    const shownAmount =
-      success.amount ?? finalAmount;
-    const shownCause =
-      success.causeLabel ?? causeLabel;
-    const shownEmail =
-      success.email ?? email;
+    const shownAmount = success.amount ?? finalAmount;
     return (
       <div className="bg-card border border-card-border rounded-3xl p-8 md:p-12 shadow-xl text-center space-y-6">
-        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-          <CheckCircle2 className="w-10 h-10 text-green-600" />
-        </div>
-        <div className="space-y-3">
-          <h3 className="font-serif text-3xl font-bold text-primary">
-            Thank You!
-          </h3>
-          <p className="text-muted-foreground text-base font-medium">
-            Your donation to Hockey Heart Initiative has
-            been received.
-          </p>
-        </div>
+        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto"><CheckCircle2 className="w-10 h-10 text-green-600" /></div>
+        <h3 className="font-serif text-3xl font-bold text-primary">Thank You!</h3>
+        <p className="text-muted-foreground font-medium">Your donation request has been received.</p>
         <div className="bg-muted/40 border border-border rounded-2xl p-5 text-sm space-y-2 text-left">
-          <div className="flex justify-between gap-2">
-            <span className="text-muted-foreground">
-              Amount
-            </span>
-            <span className="font-semibold text-primary">
-              ${shownAmount.toLocaleString()} USD
-            </span>
-          </div>
-          <div className="flex justify-between gap-2">
-            <span className="text-muted-foreground">
-              Designation
-            </span>
-            <span className="font-medium">
-              {shownCause}
-            </span>
-          </div>
-          <div className="flex justify-between gap-2">
-            <span className="text-muted-foreground">
-              Method
-            </span>
-            <span className="font-medium">
-              {success.methodLabel}
-            </span>
-          </div>
-          <div className="flex justify-between gap-2">
-            <span className="text-muted-foreground">
-              Date
-            </span>
-            <span className="font-medium">
-              {donationDate}
-            </span>
-          </div>
-          <div className="flex flex-wrap justify-between gap-2 pt-1 border-t border-border">
-            <span className="text-muted-foreground">
-              Reference
-            </span>
-            <span className="font-mono font-semibold text-primary break-all text-right">
-              {success.reference}
-            </span>
-          </div>
+          <div className="flex justify-between gap-2"><span className="text-muted-foreground">Amount</span><span className="font-semibold text-primary">${shownAmount.toLocaleString()} USD</span></div>
+          <div className="flex justify-between gap-2"><span className="text-muted-foreground">Designation</span><span className="font-medium">{success.causeLabel ?? causeLabel}</span></div>
+          <div className="flex justify-between gap-2"><span className="text-muted-foreground">Method</span><span className="font-medium">{success.methodLabel}</span></div>
+          <div className="flex flex-wrap justify-between gap-2 pt-1 border-t border-border"><span className="text-muted-foreground">Reference</span><span className="font-mono font-semibold text-primary break-all text-right">{success.reference}</span></div>
         </div>
-        <div className="text-left text-sm text-muted-foreground leading-relaxed space-y-3">
-          <p>
-            Thank you for believing in the power of hockey
-            to create opportunity, build confidence, and
-            bring communities together. Your generosity helps
-            Hockey Heart Initiative turn that belief into
-            meaningful support for players, families, coaches,
-            and communities. Every contribution matters, and
-            we are deeply grateful for your support.
-          </p>
-          <p className="font-semibold text-foreground">
-            Thank you for being part of the Hockey Heart
-            Initiative community.
-          </p>
-        </div>
-        {method === "crypto" && (
-          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-left">
-            Your donation is recorded as{" "}
-            <strong>pending</strong>. Once we verify your
-            crypto transfer, your donation will be confirmed.
-            Please keep your reference number.
-          </p>
-        )}
-        <p className="text-xs text-muted-foreground">
-          {shownEmail && (
-            <>
-              A confirmation will be sent to{" "}
-              <strong>{shownEmail}</strong>.
-              <br />
-            </>
-          )}
-          Hockey Heart Initiative — empowering youth
-          through hockey.
-        </p>
-        <button
-          type="button"
-          onClick={() => {
-            setSuccess(null);
-            setFirstName("");
-            setLastName("");
-            setEmail("");
-            setMessage("");
-            setAmount(50);
-            setCustomAmount("");
-            setError("");
-          }}
-          className="text-primary underline text-sm"
-        >
-          Make another donation
-        </button>
+        <p className="text-sm text-muted-foreground">We will contact you at <strong>{success.email ?? email}</strong> with the next steps.</p>
+        <button type="button" onClick={() => { setSuccess(null); setFirstName(""); setLastName(""); setEmail(""); setMessage(""); setAmount(50); setCustomAmount(""); setError(""); }} className="text-primary underline text-sm">Make another donation</button>
       </div>
     );
   }
+
   return (
-    <form
-      className="min-w-0 bg-card border border-card-border rounded-3xl p-6 md:p-10 shadow-xl space-y-8"
-      onSubmit={(event) => event.preventDefault()}
-    >
-      {/* Amount */}
-      <div className="space-y-4">
-        <h3 className="font-serif text-2xl font-bold text-primary">
-          Choose Amount
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          {PRESET_AMOUNTS.map((preset) => (
-            <Button
-              key={preset}
-              type="button"
-              variant={
-                amount === preset
-                  ? "default"
-                  : "outline"
-              }
-              className={`h-14 text-lg font-semibold rounded-xl ${
-                amount === preset
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-transparent text-primary border-primary/20 hover:border-primary"
-              }`}
-              onClick={() => {
-                setAmount(preset);
-                setCustomAmount("");
-                setError("");
-              }}
-            >
-              ${preset}
-            </Button>
-          ))}
-          <div className="relative col-span-2 md:col-span-1">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">
-              $
-            </span>
-            <Input
-              type="number"
-              min={50}
-              step="0.01"
-              placeholder="Custom"
-              value={customAmount}
-              onChange={(event) => {
-                setCustomAmount(event.target.value);
-                setAmount("custom");
-                setError("");
-              }}
-              className={`h-14 pl-8 text-lg font-semibold rounded-xl transition-colors ${
-                amount === "custom"
-                  ? "border-primary ring-1 ring-primary"
-                  : "border-primary/20"
-              }`}
-            />
-          </div>
-        </div>
+    <form className="min-w-0 bg-card border border-card-border rounded-3xl p-6 md:p-10 shadow-xl space-y-8" onSubmit={(event) => event.preventDefault()}>
+      <div className="space-y-4"><h3 className="font-serif text-2xl font-bold text-primary">Choose Amount</h3><div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        {PRESET_AMOUNTS.map((preset) => <Button key={preset} type="button" variant={amount === preset ? "default" : "outline"} className={`h-14 text-lg font-semibold rounded-xl ${amount === preset ? "bg-primary text-primary-foreground border-primary" : "bg-transparent text-primary border-primary/20 hover:border-primary"}`} onClick={() => { setAmount(preset); setCustomAmount(""); setError(""); }}>${preset}</Button>)}
+        <div className="relative col-span-2 md:col-span-1"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">$</span><Input type="number" min={50} step="0.01" placeholder="Custom" value={customAmount} onChange={(event) => { setCustomAmount(event.target.value); setAmount("custom"); setError(""); }} className={`h-14 pl-8 text-lg font-semibold rounded-xl ${amount === "custom" ? "border-primary ring-1 ring-primary" : "border-primary/20"}`} /></div>
+      </div></div>
+      <div className="space-y-4"><h3 className="font-serif text-2xl font-bold text-primary">Designate Your Gift</h3><RadioGroup value={cause} onValueChange={setCause} className="grid grid-cols-1 md:grid-cols-3 gap-3">{causes.map((item) => <div key={item.id}><RadioGroupItem value={item.id} id={`cause-${item.id}`} className="peer sr-only" /><Label htmlFor={`cause-${item.id}`} className="flex items-center justify-center p-4 border border-primary/20 rounded-xl cursor-pointer hover:bg-primary/5 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5">{item.label}</Label></div>)}</RadioGroup></div>
+      <div className="space-y-4"><h3 className="font-serif text-2xl font-bold text-primary">Your Details</h3><div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2"><Label htmlFor="firstName">First Name {!anonymous && <span className="text-red-500">*</span>}</Label><Input id="firstName" value={firstName} onChange={(event) => setFirstName(event.target.value)} placeholder="Jane" disabled={anonymous} className="h-12 rounded-xl" /></div>
+        <div className="space-y-2"><Label htmlFor="lastName">Last Name</Label><Input id="lastName" value={lastName} onChange={(event) => setLastName(event.target.value)} placeholder="Doe" disabled={anonymous} className="h-12 rounded-xl" /></div>
+        <div className="space-y-2 md:col-span-2"><Label htmlFor="email">Email Address <span className="text-red-500">*</span></Label><Input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="jane@example.com" className="h-12 rounded-xl" /></div>
+        <div className="space-y-2 md:col-span-2"><Label htmlFor="message">Message (Optional)</Label><Textarea id="message" value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Leave a note with your donation..." className="rounded-xl min-h-[80px]" /></div>
+        <div className="md:col-span-2"><button type="button" onClick={() => setAnonymous((value) => !value)} className="flex items-center gap-3 cursor-pointer select-none"><span className={`w-10 h-6 rounded-full relative shrink-0 ${anonymous ? "bg-primary" : "bg-gray-200"}`}><span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow ${anonymous ? "translate-x-5" : "translate-x-1"}`} /></span><span className="text-sm text-foreground font-medium">Donate anonymously</span></button></div>
+      </div></div>
+      <div className="space-y-4"><h3 className="font-serif text-2xl font-bold text-primary">Payment Method</h3><div className="grid grid-cols-1 gap-3">
+        {[{ id: "bank" as PayMethod, label: "Bank Transfer", tag: "Email Request" }, { id: "card" as PayMethod, label: "Credit / Debit Card", tag: "Email Request" }, { id: "crypto" as PayMethod, label: "Cryptocurrency", tag: "", enabled: selectedCryptoConfigured }].filter((item) => item.enabled !== false).map((item) => <button key={item.id} type="button" onClick={() => { setMethod(item.id); setError(""); }} className={`min-w-0 flex items-center justify-between gap-3 p-4 border rounded-xl ${method === item.id ? "border-primary bg-primary/5" : "border-primary/20 hover:border-primary/40"}`}><span className="min-w-0 font-medium text-primary text-sm break-words text-left">{item.label}</span><span className="shrink-0 flex items-center gap-2"><span className="bg-secondary/20 text-secondary-foreground px-2 py-0.5 rounded-full text-xs font-semibold">{item.tag || ""}</span><span className={`w-4 h-4 rounded-full border-2 ${method === item.id ? "border-primary bg-primary" : "border-gray-300"}`} /></span></button>)}
       </div>
-      {/* Cause */}
-      <div className="space-y-4">
-        <h3 className="font-serif text-2xl font-bold text-primary">
-          Designate Your Gift
-        </h3>
-        <RadioGroup
-          value={cause}
-          onValueChange={setCause}
-          className="grid grid-cols-1 md:grid-cols-3 gap-3"
-        >
-          {causes.map((item) => (
-            <div key={item.id}>
-              <RadioGroupItem
-                value={item.id}
-                id={`cause-${item.id}`}
-                className="peer sr-only"
-              />
-              <Label
-                htmlFor={`cause-${item.id}`}
-                className="flex items-center justify-center p-4 border border-primary/20 rounded-xl cursor-pointer hover:bg-primary/5 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5"
-              >
-                {item.label}
-              </Label>
-            </div>
-          ))}
-        </RadioGroup>
+      {method === "bank" && <div className="bg-muted/40 border border-border rounded-xl p-5"><p className="text-sm text-muted-foreground">We arrange bank donations by email. Click the button below and your email app will open with the donation details.</p></div>}
+      {method === "card" && <div className="bg-muted/40 border border-border rounded-xl p-4"><p className="text-sm text-muted-foreground">Card payments are being set up. Click the button below to email your donation request.</p></div>}
+      {method === "crypto" && <div className="bg-muted/40 border border-border rounded-xl p-5 space-y-4"><p className="text-sm text-muted-foreground">Select a configured cryptocurrency wallet below.</p>{CRYPTO_OPTIONS.map(({ key, label }) => { const address = settings.cryptoWallets?.[key] ?? ""; return <button key={key} type="button" onClick={() => setCryptoCoin(key)} disabled={!address} className={`w-full flex items-center justify-between p-3 border rounded-lg text-sm ${cryptoCoin === key && address ? "border-primary bg-primary/5 text-primary" : "border-border"}`}><span>{label}</span>{!address ? <span className="text-xs text-muted-foreground">Coming soon</span> : cryptoCoin === key ? <span className="text-xs text-primary font-semibold">Selected</span> : null}</button>; })}{selectedCryptoAddress && <div className="flex items-center gap-2 bg-background border border-border rounded-lg p-3"><p className="font-mono text-xs flex-1 break-all">{selectedCryptoAddress}</p><button type="button" onClick={() => { try { navigator.clipboard?.writeText(selectedCryptoAddress).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 2000); }).catch(() => setError("Unable to copy the wallet address.")); } catch { setError("Unable to copy the wallet address."); } }} className="shrink-0 p-1.5">{copied ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}</button></div>}</div>}
       </div>
-      {/* Donor Details */}
-      <div className="space-y-4">
-        <h3 className="font-serif text-2xl font-bold text-primary">
-          Your Details
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="firstName">
-              First Name{" "}
-              {!anonymous && (
-                <span className="text-red-500">
-                  *
-                </span>
-              )}
-            </Label>
-            <Input
-              id="firstName"
-              value={firstName}
-              onChange={(event) =>
-                setFirstName(event.target.value)
-              }
-              placeholder="Jane"
-              disabled={anonymous}
-              className="h-12 rounded-xl"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="lastName">
-              Last Name
-            </Label>
-            <Input
-              id="lastName"
-              value={lastName}
-              onChange={(event) =>
-                setLastName(event.target.value)
-              }
-              placeholder="Doe"
-              disabled={anonymous}
-              className="h-12 rounded-xl"
-            />
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="email">
-              Email Address{" "}
-              <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(event) =>
-                setEmail(event.target.value)
-              }
-              placeholder="jane@example.com"
-              className="h-12 rounded-xl"
-            />
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="message">
-              Message (Optional)
-            </Label>
-            <Textarea
-              id="message"
-              value={message}
-              onChange={(event) =>
-                setMessage(event.target.value)
-              }
-              placeholder="Leave a note with your donation..."
-              className="rounded-xl min-h-[80px]"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <button
-              type="button"
-              onClick={() =>
-                setAnonymous((value) => !value)
-              }
-              className="flex items-center gap-3 cursor-pointer select-none"
-            >
-              <span
-                className={`w-10 h-6 rounded-full transition-colors relative shrink-0 ${
-                  anonymous
-                    ? "bg-primary"
-                    : "bg-gray-200"
-                }`}
-              >
-                <span
-                  className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                    anonymous
-                      ? "translate-x-5"
-                      : "translate-x-1"
-                  }`}
-                />
-              </span>
-              <span className="text-sm text-foreground font-medium">
-                Donate anonymously
-              </span>
-            </button>
-          </div>
-        </div>
-      </div>
-      {/* Payment Method */}
-      <div className="space-y-4">
-        <h3 className="font-serif text-2xl font-bold text-primary">
-          Payment Method
-        </h3>
-        <div className="grid grid-cols-1 gap-3">
-          {[
-            {
-              id: "bank" as PayMethod,
-              label: settings.bankTransferProviderName
-                ? `Bank Transfer via ${settings.bankTransferProviderName}`
-                : "Bank Transfer",
-              tag: settings.bankTransferEnabled ? "Recommended" : "Email Request",
-              enabled: bankConfigured || true,
-            },
-            {
-              id: "card" as PayMethod,
-              label: "Credit / Debit Card",
-              tag: cardConfigured ? "" : "Email Request",
-              enabled: cardConfigured || true,
-            },
-            {
-              id: "crypto" as PayMethod,
-              label: "Cryptocurrency",
-              tag: "",
-              enabled: cryptoConfigured,
-            },
-          ]
-            .filter((item) => item.enabled)
-            .map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => {
-                  setMethod(item.id);
-                  setError("");
-                }}
-                className={`min-w-0 flex items-center justify-between gap-3 p-4 border rounded-xl transition-colors ${
-                  method === item.id
-                    ? "border-primary bg-primary/5"
-                    : "border-primary/20 hover:border-primary/40"
-                }`}
-              >
-                <span className="min-w-0 font-medium text-primary text-sm break-words text-left">
-                  {item.label}
-                </span>
-                <div className="shrink-0 flex items-center gap-2">
-                  {item.tag && (
-                    <span className="bg-secondary/20 text-secondary-foreground px-2 py-0.5 rounded-full text-xs font-semibold">
-                      {item.tag}
-                    </span>
-                  )}
-                  <span
-                    className={`w-4 h-4 rounded-full border-2 ${
-                      method === item.id
-                        ? "border-primary bg-primary"
-                        : "border-gray-300"
-                    }`}
-                  />
-                </div>
-              </button>
-            ))}
-        </div>
-        {/* Bank Transfer */}
-        {method === "bank" &&
-          !bankConfigured && (
-            <div className="bg-muted/40 border border-border rounded-xl p-5 space-y-2">
-              <p className="text-sm font-semibold text-foreground">
-                Bank transfer via{" "}
-                {settings.bankTransferProviderName ||
-                  "our payment provider"}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                At the moment, we are arranging bank donations by email. Please send
-                your donation details to us and we will confirm the next step.
-              </p>
-            </div>
-          )}
-        {/* Card notice */}
-        {method === "card" &&
-          !cardConfigured && (
-            <div className="bg-muted/40 border border-border rounded-xl p-4">
-              <p className="text-sm text-muted-foreground">
-                Card payments are currently being set up. Please email us to arrange
-                your donation at{" "}
-                <a
-                  href={`mailto:${DONATION_CONTACT_EMAIL}`}
-                  className="text-primary underline"
-                >
-                  {DONATION_CONTACT_EMAIL}
-                </a>
-                .
-              </p>
-            </div>
-          )}
-        {/* Cryptocurrency */}
-        {method === "crypto" && (
-          <div className="bg-muted/40 border border-border rounded-xl p-5 space-y-4">
-            {cryptoConfigured ? (
-              <>
-                <p className="text-sm font-semibold text-foreground">
-                  Select Cryptocurrency
-                </p>
-                <div className="grid grid-cols-1 gap-2">
-                  {CRYPTO_OPTIONS.map(
-                    ({ key, label }) => {
-                      const address =
-                        settings.cryptoWallets?.[
-                          key
-                        ] ?? "";
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() =>
-                            setCryptoCoin(key)
-                          }
-                          disabled={!address}
-                          className={`flex items-center justify-between p-3 border rounded-lg text-sm transition-colors ${
-                            cryptoCoin === key &&
-                            address
-                              ? "border-primary bg-primary/5 text-primary"
-                              : "border-border text-foreground hover:border-primary/30"
-                          } ${
-                            !address
-                              ? "opacity-40 cursor-not-allowed"
-                              : ""
-                          }`}
-                        >
-                          <span className="font-medium">
-                            {label}
-                          </span>
-                          {!address && (
-                            <span className="text-xs text-muted-foreground">
-                              Coming soon
-                            </span>
-                          )}
-                          {address &&
-                            cryptoCoin === key && (
-                              <span className="text-xs text-primary font-semibold">
-                                Selected
-                              </span>
-                            )}
-                        </button>
-                      );
-                    },
-                  )}
-                </div>
-                {selectedCryptoAddress && (
-                  <div className="space-y-2">
-                    <p className="text-xs text-muted-foreground">
-                      Send to this address:
-                    </p>
-                    <div className="flex items-center gap-2 bg-background border border-border rounded-lg p-3">
-                      <p className="font-mono text-xs flex-1 break-all">
-                        {selectedCryptoAddress}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={copyAddress}
-                        className="shrink-0 p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-                        title="Copy address"
-                      >
-                        {copied ? (
-                          <CheckCircle2 className="w-4 h-4 text-green-500" />
-                        ) : (
-                          <Copy className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                    <p className="text-xs text-amber-600">
-                      ⚠ Always double-check the address
-                      before sending. Crypto transactions are
-                      irreversible.
-                    </p>
-                  </div>
-                )}
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Cryptocurrency wallets are being configured.
-                Please contact{" "}
-                <a
-                  href={`mailto:${DONATION_CONTACT_EMAIL}`}
-                  className="text-primary underline"
-                >
-                  {DONATION_CONTACT_EMAIL}
-                </a>{" "}
-                to donate via crypto.
-              </p>
-            )}
-          </div>
-        )}
-      </div>
-      {/* Error */}
-      {error && (
-        <div
-          role="alert"
-          className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-600 text-sm"
-        >
-          {error}
-        </div>
-      )}
-      {/* CTA */}
-      <Button
-        size="lg"
-        type="button"
-        disabled={loading}
-        onClick={() => {
-          setError("");
-          if (method === "bank") {
-            handleBankTransfer();
-            return;
-          }
-          if (method === "card") {
-            handleCard();
-            return;
-          }
-          if (method === "crypto") {
-            handleCryptoConfirm();
-            return;
-          }
-          setError("This payment method is not currently available.");
-        }}
-        className="w-full min-w-0 min-h-16 h-auto py-3 px-3 whitespace-normal break-words text-base sm:text-xl leading-tight rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-md disabled:opacity-60"
-      >
-        {loading
-          ? "Opening payment window…"
-          : method === "bank"
-            ? `Donate $${finalAmount.toLocaleString()} via Bank Transfer`
-            : method === "card"
-              ? `Pay $${finalAmount.toLocaleString()} by Card`
-              : `I've Sent My Crypto Donation`}
-      </Button>
-      <div className="text-center space-y-2">
-        <p className="text-xs text-muted-foreground flex items-center justify-center gap-1">
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-            />
-          </svg>
-          Secure, encrypted donation checkout
-        </p>
-      </div>
+      {error && <div role="alert" className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-600 text-sm">{error}</div>}
+      <Button size="lg" type="button" disabled={loading} onClick={() => { setError(""); if (method === "bank") { openDonationEmailRequest("bank_transfer"); return; } if (method === "card") { openDonationEmailRequest("card"); return; } handleCryptoConfirm(); }} className="w-full min-w-0 min-h-16 h-auto py-3 px-3 whitespace-normal break-words text-base sm:text-xl leading-tight rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-md disabled:opacity-60">{loading ? "Preparing…" : method === "bank" ? `Email donation request for $${finalAmount.toLocaleString()}` : method === "card" ? `Email card donation request for $${finalAmount.toLocaleString()}` : "I've Sent My Crypto Donation"}</Button>
+      <div className="text-center"><p className="text-xs text-muted-foreground">Your email app will open for card and bank donation requests.</p></div>
     </form>
   );
 }
