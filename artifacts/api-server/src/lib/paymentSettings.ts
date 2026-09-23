@@ -22,14 +22,14 @@ export interface PublicPaymentSettings {
   };
 }
 
-const EMPTY_PROVIDER_LABEL = "No payment provider configured";
+const EMAIL_DONATION_LABEL = "Email donation request";
 
 export const DEFAULT_PAYMENT_SETTINGS: PublicPaymentSettings = {
-  // No card/bank gateway is connected. Keep these disabled until a provider
-  // is implemented and configured server-side.
-  cardEnabled: false,
-  bankTransferEnabled: false,
-  bankTransferProviderName: EMPTY_PROVIDER_LABEL,
+  // Card and bank requests are handled by email until an administrator
+  // configures a real payment provider. They must not invoke a missing gateway.
+  cardEnabled: true,
+  bankTransferEnabled: true,
+  bankTransferProviderName: EMAIL_DONATION_LABEL,
   cryptoEnabled: false,
   cryptoWallets: {
     bitcoin: "",
@@ -55,7 +55,7 @@ function decodeBankProfile(rawBankName: string | null | undefined): {
   bankName: string;
 } {
   if (!rawBankName?.startsWith(BANK_PROFILE_PREFIX)) {
-    return { providerName: EMPTY_PROVIDER_LABEL, bankName: "" };
+    return { providerName: EMAIL_DONATION_LABEL, bankName: "" };
   }
 
   try {
@@ -71,23 +71,24 @@ function decodeBankProfile(rawBankName: string | null | undefined): {
       return { providerName: parsed.providerName, bankName: parsed.bankName };
     }
   } catch {
-    // Treat malformed provider metadata as unconfigured.
+    // Treat malformed provider metadata as the email-request fallback.
   }
 
-  return { providerName: EMPTY_PROVIDER_LABEL, bankName: "" };
+  return { providerName: EMAIL_DONATION_LABEL, bankName: "" };
 }
 
-function encodeBankProfile(providerName: string, bankName: string): string {
-  return `${BANK_PROFILE_PREFIX}${JSON.stringify({ providerName, bankName })}`;
+function encodeBankProfile(providerName: string): string {
+  return `${BANK_PROFILE_PREFIX}${JSON.stringify({
+    providerName: providerName.trim() || EMAIL_DONATION_LABEL,
+    bankName: "",
+  })}`;
 }
 
 function toPublic(row: PaymentSetting): PublicPaymentSettings {
   const bankProfile = decodeBankProfile(row.bankName);
   return {
-    // The previous gateway has intentionally been removed. These remain off
-    // until a replacement provider is implemented server-side.
-    cardEnabled: false,
-    bankTransferEnabled: false,
+    cardEnabled: row.cardEnabled,
+    bankTransferEnabled: row.bankTransferEnabled,
     bankTransferProviderName: bankProfile.providerName,
     cryptoEnabled: row.cryptoEnabled,
     cryptoWallets: {
@@ -97,6 +98,7 @@ function toPublic(row: PaymentSetting): PublicPaymentSettings {
       usdtErc20: row.usdtErc20Wallet,
       solana: row.solanaWallet,
     },
+    // Never expose bank credentials or instructions through the public API.
     bankDetails: {
       bankName: "",
       accountName: "",
@@ -119,19 +121,15 @@ export async function savePaymentSettings(
   const now = new Date();
   const values = {
     id: 1,
-    // Never enable an unconfigured gateway from the admin display settings.
-    cardEnabled: false,
-    bankTransferEnabled: false,
+    cardEnabled: settings.cardEnabled,
+    bankTransferEnabled: settings.bankTransferEnabled,
     cryptoEnabled: settings.cryptoEnabled,
     bitcoinWallet: settings.cryptoWallets.bitcoin,
     ethereumWallet: settings.cryptoWallets.ethereum,
     usdtTrc20Wallet: settings.cryptoWallets.usdtTrc20,
     usdtErc20Wallet: settings.cryptoWallets.usdtErc20,
     solanaWallet: settings.cryptoWallets.solana,
-    bankName: encodeBankProfile(
-      settings.bankTransferProviderName || EMPTY_PROVIDER_LABEL,
-      "",
-    ),
+    bankName: encodeBankProfile(settings.bankTransferProviderName),
     accountName: "",
     accountNumber: "",
     routingNumber: "",
