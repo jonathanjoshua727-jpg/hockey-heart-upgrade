@@ -1,8 +1,25 @@
 import { useMemo, useState, useEffect } from "react";
-import { getTransactions, getCampaigns, getArticles, getActivityLog } from "@/lib/contentStore";
+import {
+  getTransactions,
+  getCampaigns,
+  getArticles,
+  getActivityLog,
+} from "@/lib/contentStore";
 import { fetchDonationStats, type DonationStats } from "@/lib/donationApi";
-import { getAllClicks, getClickStats, getTopLinks, getSupporterClicks, getDonationFunnel } from "@/lib/analytics";
-import { MousePointerClick, TrendingUp, BarChart3, Users, ArrowDown } from "lucide-react";
+import {
+  getAllClicks,
+  getClickStats,
+  getTopLinks,
+  getSupporterClicks,
+  getDonationFunnel,
+} from "@/lib/analytics";
+import {
+  MousePointerClick,
+  TrendingUp,
+  BarChart3,
+  Users,
+  ArrowDown,
+} from "lucide-react";
 
 function pct(num: number, total: number) {
   if (total === 0) return 0;
@@ -10,14 +27,25 @@ function pct(num: number, total: number) {
 }
 
 function convPct(from: number, to: number) {
-  if (from === 0) return '—';
+  if (from === 0) return "—";
   return `${Math.round((to / from) * 100)}%`;
 }
 
 export function AnalyticsSection() {
-  const transactions = getTransactions();
-  const campaigns = getCampaigns();
-  const articles = getArticles();
+  const transactions = useMemo(() => {
+    const value = getTransactions();
+    return Array.isArray(value) ? value : [];
+  }, []);
+
+  const campaigns = useMemo(() => {
+    const value = getCampaigns();
+    return Array.isArray(value) ? value : [];
+  }, []);
+
+  const articles = useMemo(() => {
+    const value = getArticles();
+    return Array.isArray(value) ? value : [];
+  }, []);
 
   const clicks = useMemo(() => getAllClicks(), []);
   const clickStats = useMemo(() => getClickStats(clicks), [clicks]);
@@ -25,75 +53,140 @@ export function AnalyticsSection() {
   const supporterLinks = useMemo(() => getSupporterClicks(clicks), [clicks]);
   const funnel = useMemo(() => getDonationFunnel(), []);
 
-  // Verified donation stats come from the payment backend; localStorage
-  // transactions only cover manually recorded crypto donations.
   const [stats, setStats] = useState<DonationStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState("");
+
   useEffect(() => {
-    fetchDonationStats().then(setStats).catch(() => setStats(null));
+    let active = true;
+    setStatsLoading(true);
+    setStatsError("");
+
+    fetchDonationStats()
+      .then((nextStats) => {
+        if (!active) return;
+        setStats(
+          nextStats && typeof nextStats === "object" ? nextStats : null,
+        );
+      })
+      .catch(() => {
+        if (!active) return;
+        setStats(null);
+        setStatsError("Donation stats could not be loaded right now.");
+      })
+      .finally(() => {
+        if (!active) return;
+        setStatsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const localCrypto = transactions.filter((t) => t.method.startsWith("crypto_"));
+  const safeTransactions = Array.isArray(transactions) ? transactions : [];
+  const safeCampaigns = Array.isArray(campaigns) ? campaigns : [];
+  const safeArticles = Array.isArray(articles) ? articles : [];
+
+  const localCrypto = safeTransactions.filter(
+    (t) => typeof t?.method === "string" && t.method.startsWith("crypto_"),
+  );
   const completed = localCrypto.filter((t) => t.status === "completed");
   const pending = localCrypto.filter((t) => t.status === "pending");
-  const completedCount = completed.length + (stats?.counts.successful ?? 0);
+  const successfulServerCount = stats?.counts?.successful ?? 0;
+  const completedCount = completed.length + successfulServerCount;
   const totalRaised =
-    completed.reduce((s, t) => s + t.amount, 0) + (stats?.totalRaised ?? 0);
-  const avgDonation = completedCount > 0 ? Math.round(totalRaised / completedCount) : 0;
-  const totalGoal = campaigns.reduce((s, c) => s + c.goal, 0);
-  const totalCampaignRaised = campaigns.reduce((s, c) => s + c.raised, 0);
+    completed.reduce((s, t) => s + (Number(t.amount) || 0), 0) +
+    (stats?.totalRaised ?? 0);
+  const avgDonation =
+    completedCount > 0 ? Math.round(totalRaised / completedCount) : 0;
+  const totalGoal = safeCampaigns.reduce(
+    (s, c) => s + (Number(c.goal) || 0),
+    0,
+  );
+  const totalCampaignRaised = safeCampaigns.reduce(
+    (s, c) => s + (Number(c.raised) || 0),
+    0,
+  );
   const overallProgress = pct(totalCampaignRaised, totalGoal);
 
   const methodMap: Record<string, number> = {};
   for (const tx of completed) {
-    methodMap["Cryptocurrency"] = (methodMap["Cryptocurrency"] ?? 0) + tx.amount;
+    methodMap["Cryptocurrency"] =
+      (methodMap["Cryptocurrency"] ?? 0) + (Number(tx.amount) || 0);
   }
-  for (const m of stats?.byMethod ?? []) {
-    const label = m.method === "bank_transfer" ? "Bank Transfer" : m.method === "card" ? "Credit/Debit Card" : m.method;
-    methodMap[label] = (methodMap[label] ?? 0) + m.total;
+  for (const m of Array.isArray(stats?.byMethod) ? stats.byMethod : []) {
+    const label =
+      m.method === "bank_transfer"
+        ? "Bank Transfer"
+        : m.method === "card"
+          ? "Credit/Debit Card"
+          : m.method;
+    methodMap[label] = (methodMap[label] ?? 0) + (Number(m.total) || 0);
   }
 
   const causeMap: Record<string, number> = {};
   for (const tx of completed) {
-    causeMap[tx.cause] = (causeMap[tx.cause] ?? 0) + tx.amount;
+    causeMap[tx.cause] =
+      (causeMap[tx.cause] ?? 0) + (Number(tx.amount) || 0);
   }
-  for (const c of stats?.byCause ?? []) {
-    causeMap[c.causeLabel] = (causeMap[c.causeLabel] ?? 0) + c.total;
+  for (const c of Array.isArray(stats?.byCause) ? stats.byCause : []) {
+    causeMap[c.causeLabel] =
+      (causeMap[c.causeLabel] ?? 0) + (Number(c.total) || 0);
   }
 
   const currencyMap: Record<string, number> = {};
   for (const tx of completed) {
-    currencyMap[tx.currency || "USD"] = (currencyMap[tx.currency || "USD"] ?? 0) + tx.amount;
+    currencyMap[tx.currency || "USD"] =
+      (currencyMap[tx.currency || "USD"] ?? 0) + (Number(tx.amount) || 0);
   }
-  for (const c of stats?.byCurrency ?? []) {
-    currencyMap[c.currency] = (currencyMap[c.currency] ?? 0) + c.total;
+  for (const c of Array.isArray(stats?.byCurrency) ? stats.byCurrency : []) {
+    currencyMap[c.currency] =
+      (currencyMap[c.currency] ?? 0) + (Number(c.total) || 0);
   }
 
-  const topCampaigns = [...campaigns].sort((a, b) => b.raised - a.raised).slice(0, 5);
-  const recentLog = getActivityLog().slice(0, 6);
+  const topCampaigns = [...safeCampaigns]
+    .sort((a, b) => (Number(b.raised) || 0) - (Number(a.raised) || 0))
+    .slice(0, 5);
+  const recentLog = Array.isArray(getActivityLog()) ? getActivityLog().slice(0, 6) : [];
 
   const TYPE_LABEL: Record<string, string> = {
-    donate_button: 'Donate Button',
-    campaign: 'Campaign',
-    program: 'Program',
-    news: 'News',
-    supporter: 'Supporter',
-    email: 'Email',
-    phone: 'Phone',
-    whatsapp: 'WhatsApp',
-    cta: 'CTA',
-    nav: 'Navigation',
-    external: 'External Link',
-    donation_page_visit: 'Donation Page',
-    checkout_start: 'Checkout',
-    donation_success: 'Completed Donation',
+    donate_button: "Donate Button",
+    campaign: "Campaign",
+    program: "Program",
+    news: "News",
+    supporter: "Supporter",
+    email: "Email",
+    phone: "Phone",
+    whatsapp: "WhatsApp",
+    cta: "CTA",
+    nav: "Navigation",
+    external: "External Link",
+    donation_page_visit: "Donation Page",
+    checkout_start: "Checkout",
+    donation_success: "Completed Donation",
   };
 
   return (
     <div className="space-y-8">
       <div>
         <h2 className="text-xl font-bold text-gray-900">Analytics</h2>
-        <p className="text-gray-500 text-sm mt-1">Link clicks, donation funnel, and fundraising performance.</p>
+        <p className="text-gray-500 text-sm mt-1">
+          Link clicks, donation funnel, and fundraising performance.
+        </p>
       </div>
+
+      {statsError && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-amber-700 text-sm">
+          {statsError}
+        </div>
+      )}
+
+      {statsLoading && (
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 text-sm text-gray-500">
+          Loading donation stats…
+        </div>
+      )}
 
       {/* Link click overview */}
       <div className="space-y-3">
@@ -103,14 +196,19 @@ export function AnalyticsSection() {
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           {[
-            { label: 'Total Clicks', value: clickStats.total },
-            { label: 'Today', value: clickStats.today },
-            { label: 'This Week', value: clickStats.thisWeek },
-            { label: 'This Month', value: clickStats.thisMonth },
-            { label: 'This Year', value: clickStats.thisYear },
+            { label: "Total Clicks", value: clickStats.total },
+            { label: "Today", value: clickStats.today },
+            { label: "This Week", value: clickStats.thisWeek },
+            { label: "This Month", value: clickStats.thisMonth },
+            { label: "This Year", value: clickStats.thisYear },
           ].map(({ label, value }) => (
-            <div key={label} className="bg-white border border-gray-200 rounded-2xl p-4 text-center">
-              <p className="text-2xl font-bold text-[#0a1f44]">{value.toLocaleString()}</p>
+            <div
+              key={label}
+              className="bg-white border border-gray-200 rounded-2xl p-4 text-center"
+            >
+              <p className="text-2xl font-bold text-[#0a1f44]">
+                {value.toLocaleString()}
+              </p>
               <p className="text-xs text-gray-500 mt-1">{label}</p>
             </div>
           ))}
@@ -125,33 +223,71 @@ export function AnalyticsSection() {
         </div>
         <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-3">
           {[
-            { label: 'Donation Page Visits', count: funnel.pageVisit, note: '' },
-            { label: 'Donate Button Clicks', count: funnel.btnClick, note: funnel.pageVisit > 0 ? `${convPct(funnel.pageVisit, funnel.btnClick)} of visitors` : '' },
-            { label: 'Checkout Started', count: funnel.checkoutStart, note: funnel.btnClick > 0 ? `${convPct(funnel.btnClick, funnel.checkoutStart)} of clicks` : '' },
-            { label: 'Successful Donations', count: funnel.success, note: funnel.checkoutStart > 0 ? `${convPct(funnel.checkoutStart, funnel.success)} conversion` : '' },
+            { label: "Donation Page Visits", count: funnel.pageVisit, note: "" },
+            {
+              label: "Donate Button Clicks",
+              count: funnel.btnClick,
+              note:
+                funnel.pageVisit > 0
+                  ? `${convPct(funnel.pageVisit, funnel.btnClick)} of visitors`
+                  : "",
+            },
+            {
+              label: "Checkout Started",
+              count: funnel.checkoutStart,
+              note:
+                funnel.btnClick > 0
+                  ? `${convPct(funnel.btnClick, funnel.checkoutStart)} of clicks`
+                  : "",
+            },
+            {
+              label: "Successful Donations",
+              count: funnel.success,
+              note:
+                funnel.checkoutStart > 0
+                  ? `${convPct(funnel.checkoutStart, funnel.success)} conversion`
+                  : "",
+            },
           ].map(({ label, count, note }, idx) => {
-            const maxCount = Math.max(funnel.pageVisit, funnel.btnClick, funnel.checkoutStart, funnel.success, 1);
+            const maxCount = Math.max(
+              funnel.pageVisit,
+              funnel.btnClick,
+              funnel.checkoutStart,
+              funnel.success,
+              1,
+            );
             const w = Math.max(4, Math.round((count / maxCount) * 100));
             return (
               <div key={label} className="space-y-1">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-700 font-medium">{idx + 1}. {label}</span>
+                  <span className="text-gray-700 font-medium">
+                    {idx + 1}. {label}
+                  </span>
                   <div className="flex items-center gap-3">
                     {note && <span className="text-gray-400 text-xs">{note}</span>}
-                    <span className="font-bold text-gray-900 tabular-nums">{count.toLocaleString()}</span>
+                    <span className="font-bold text-gray-900 tabular-nums">
+                      {count.toLocaleString()}
+                    </span>
                   </div>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                  <div className="h-2.5 rounded-full bg-gradient-to-r from-[#0a1f44] to-[#a8d8ea] transition-all" style={{ width: `${w}%` }} />
+                  <div
+                    className="h-2.5 rounded-full bg-gradient-to-r from-[#0a1f44] to-[#a8d8ea] transition-all"
+                    style={{ width: `${w}%` }}
+                  />
                 </div>
               </div>
             );
           })}
           {funnel.failed > 0 && (
-            <p className="text-xs text-red-500 pt-1">⚠ {funnel.failed} failed payment attempt{funnel.failed !== 1 ? 's' : ''}</p>
+            <p className="text-xs text-red-500 pt-1">
+              ⚠ {funnel.failed} failed payment attempt{funnel.failed !== 1 ? "s" : ""}
+            </p>
           )}
           {funnel.pageVisit === 0 && funnel.btnClick === 0 && (
-            <p className="text-gray-400 text-sm italic text-center py-2">No donation funnel data yet. Clicks will appear here once visitors interact with the public site.</p>
+            <p className="text-gray-400 text-sm italic text-center py-2">
+              No donation funnel data yet. Clicks will appear here once visitors interact with the public site.
+            </p>
           )}
         </div>
       </div>
@@ -167,27 +303,52 @@ export function AnalyticsSection() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Link</th>
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Type</th>
-                  <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Today</th>
-                  <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Week</th>
-                  <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Month</th>
-                  <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Total</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">
+                    Link
+                  </th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">
+                    Type
+                  </th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase">
+                    Today
+                  </th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase">
+                    Week
+                  </th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase">
+                    Month
+                  </th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase">
+                    Total
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {topLinks.map((link) => (
-                  <tr key={link.label + link.destination} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-5 py-3 font-medium text-gray-900 max-w-[200px] truncate">{link.label}</td>
+                  <tr
+                    key={`${link.label}-${link.destination}`}
+                    className="hover:bg-gray-50 transition-colors"
+                  >
+                    <td className="px-5 py-3 font-medium text-gray-900 max-w-[200px] truncate">
+                      {link.label}
+                    </td>
                     <td className="px-5 py-3">
                       <span className="text-xs bg-[#a8d8ea]/20 text-[#0a1f44] px-2 py-0.5 rounded-full font-semibold">
                         {TYPE_LABEL[link.type] ?? link.type}
                       </span>
                     </td>
-                    <td className="px-5 py-3 text-right text-gray-600 tabular-nums">{link.todayCount}</td>
-                    <td className="px-5 py-3 text-right text-gray-600 tabular-nums">{link.weekCount}</td>
-                    <td className="px-5 py-3 text-right text-gray-600 tabular-nums">{link.monthCount}</td>
-                    <td className="px-5 py-3 text-right font-bold text-gray-900 tabular-nums">{link.count}</td>
+                    <td className="px-5 py-3 text-right text-gray-600 tabular-nums">
+                      {link.todayCount}
+                    </td>
+                    <td className="px-5 py-3 text-right text-gray-600 tabular-nums">
+                      {link.weekCount}
+                    </td>
+                    <td className="px-5 py-3 text-right text-gray-600 tabular-nums">
+                      {link.monthCount}
+                    </td>
+                    <td className="px-5 py-3 text-right font-bold text-gray-900 tabular-nums">
+                      {link.count}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -201,27 +362,47 @@ export function AnalyticsSection() {
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4 text-[#0a1f44]" />
-            <h3 className="font-bold text-gray-900">Supporter & Ambassador Link Engagement</h3>
+            <h3 className="font-bold text-gray-900">
+              Supporter & Ambassador Link Engagement
+            </h3>
           </div>
           <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Supporter</th>
-                  <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Today</th>
-                  <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase">This Week</th>
-                  <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase">This Month</th>
-                  <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Total</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">
+                    Supporter
+                  </th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase">
+                    Today
+                  </th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase">
+                    This Week
+                  </th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase">
+                    This Month
+                  </th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase">
+                    Total
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {supporterLinks.map((link) => (
                   <tr key={link.label} className="hover:bg-gray-50">
                     <td className="px-5 py-3 font-medium text-gray-900">{link.label}</td>
-                    <td className="px-5 py-3 text-right text-gray-600 tabular-nums">{link.todayCount}</td>
-                    <td className="px-5 py-3 text-right text-gray-600 tabular-nums">{link.weekCount}</td>
-                    <td className="px-5 py-3 text-right text-gray-600 tabular-nums">{link.monthCount}</td>
-                    <td className="px-5 py-3 text-right font-bold text-gray-900 tabular-nums">{link.count}</td>
+                    <td className="px-5 py-3 text-right text-gray-600 tabular-nums">
+                      {link.todayCount}
+                    </td>
+                    <td className="px-5 py-3 text-right text-gray-600 tabular-nums">
+                      {link.weekCount}
+                    </td>
+                    <td className="px-5 py-3 text-right text-gray-600 tabular-nums">
+                      {link.monthCount}
+                    </td>
+                    <td className="px-5 py-3 text-right font-bold text-gray-900 tabular-nums">
+                      {link.count}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -234,7 +415,9 @@ export function AnalyticsSection() {
         <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center text-gray-400">
           <BarChart3 className="w-10 h-10 mx-auto mb-3 opacity-30" />
           <p className="font-medium">No click data yet</p>
-          <p className="text-sm mt-1">Link analytics will appear here once visitors interact with the public site. Admin sessions are not counted.</p>
+          <p className="text-sm mt-1">
+            Link analytics will appear here once visitors interact with the public site. Admin sessions are not counted.
+          </p>
         </div>
       )}
 
@@ -243,10 +426,30 @@ export function AnalyticsSection() {
         <h3 className="font-bold text-gray-900">Fundraising Performance</h3>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: "Total Raised (Confirmed)", value: `$${totalRaised.toLocaleString()}`, color: "text-emerald-600", bg: "bg-emerald-50" },
-            { label: "Pending Donations", value: pending.length, color: "text-amber-600", bg: "bg-amber-50" },
-            { label: "Average Donation", value: `$${avgDonation.toLocaleString()}`, color: "text-blue-600", bg: "bg-blue-50" },
-            { label: "Campaign Progress", value: `${overallProgress}%`, color: "text-[#0a1f44]", bg: "bg-[#a8d8ea]/10" },
+            {
+              label: "Total Raised (Confirmed)",
+              value: `$${totalRaised.toLocaleString()}`,
+              color: "text-emerald-600",
+              bg: "bg-emerald-50",
+            },
+            {
+              label: "Pending Donations",
+              value: pending.length,
+              color: "text-amber-600",
+              bg: "bg-amber-50",
+            },
+            {
+              label: "Average Donation",
+              value: `$${avgDonation.toLocaleString()}`,
+              color: "text-blue-600",
+              bg: "bg-blue-50",
+            },
+            {
+              label: "Campaign Progress",
+              value: `${overallProgress}%`,
+              color: "text-[#0a1f44]",
+              bg: "bg-[#a8d8ea]/10",
+            },
           ].map(({ label, value, color, bg }) => (
             <div key={label} className={`${bg} rounded-2xl p-5`}>
               <p className={`text-2xl font-bold ${color}`}>{value}</p>
@@ -264,17 +467,22 @@ export function AnalyticsSection() {
             <p className="text-gray-400 text-sm italic">No confirmed donations yet.</p>
           ) : (
             <div className="space-y-3">
-              {Object.entries(methodMap).sort(([, a], [, b]) => b - a).map(([method, amount]) => (
-                <div key={method} className="space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-700">{method}</span>
-                    <span className="font-semibold">${amount.toLocaleString()}</span>
+              {Object.entries(methodMap)
+                .sort(([, a], [, b]) => b - a)
+                .map(([method, amount]) => (
+                  <div key={method} className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-700">{method}</span>
+                      <span className="font-semibold">${amount.toLocaleString()}</span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="h-2 rounded-full bg-[#a8d8ea]"
+                        style={{ width: `${pct(amount, totalRaised)}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                    <div className="h-2 rounded-full bg-[#a8d8ea]" style={{ width: `${pct(amount, totalRaised)}%` }} />
-                  </div>
-                </div>
-              ))}
+                ))}
             </div>
           )}
         </div>
@@ -286,17 +494,24 @@ export function AnalyticsSection() {
             <p className="text-gray-400 text-sm italic">No confirmed donations yet.</p>
           ) : (
             <div className="space-y-3">
-              {Object.entries(causeMap).sort(([, a], [, b]) => b - a).map(([cause, amount]) => (
-                <div key={cause} className="space-y-1">
-                  <div className="flex justify-between text-sm gap-2">
-                    <span className="text-gray-700 truncate">{cause}</span>
-                    <span className="font-semibold shrink-0">${amount.toLocaleString()}</span>
+              {Object.entries(causeMap)
+                .sort(([, a], [, b]) => b - a)
+                .map(([cause, amount]) => (
+                  <div key={cause} className="space-y-1">
+                    <div className="flex justify-between text-sm gap-2">
+                      <span className="text-gray-700 truncate">{cause}</span>
+                      <span className="font-semibold shrink-0">
+                        ${amount.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="h-2 rounded-full bg-[#0a1f44]/70"
+                        style={{ width: `${pct(amount, totalRaised)}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                    <div className="h-2 rounded-full bg-[#0a1f44]/70" style={{ width: `${pct(amount, totalRaised)}%` }} />
-                  </div>
-                </div>
-              ))}
+                ))}
             </div>
           )}
         </div>
@@ -308,12 +523,16 @@ export function AnalyticsSection() {
             <p className="text-gray-400 text-sm italic">No confirmed donations yet.</p>
           ) : (
             <div className="space-y-3">
-              {Object.entries(currencyMap).sort(([, a], [, b]) => b - a).map(([cur, amount]) => (
-                <div key={cur} className="flex justify-between text-sm">
-                  <span className="text-gray-700 font-medium">{cur}</span>
-                  <span className="font-semibold">{amount.toLocaleString()} {cur}</span>
-                </div>
-              ))}
+              {Object.entries(currencyMap)
+                .sort(([, a], [, b]) => b - a)
+                .map(([cur, amount]) => (
+                  <div key={cur} className="flex justify-between text-sm">
+                    <span className="text-gray-700 font-medium">{cur}</span>
+                    <span className="font-semibold">
+                      {amount.toLocaleString()} {cur}
+                    </span>
+                  </div>
+                ))}
             </div>
           )}
         </div>
@@ -322,20 +541,30 @@ export function AnalyticsSection() {
         <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-4">
           <h3 className="font-bold text-gray-900">Campaign Performance</h3>
           <div className="space-y-3">
-            {topCampaigns.map((c) => {
-              const p = Math.min(100, Math.round((c.raised / c.goal) * 100));
-              return (
-                <div key={c.id} className="space-y-1">
-                  <div className="flex justify-between text-sm gap-2">
-                    <span className="text-gray-700 font-medium truncate">{c.title}</span>
-                    <span className="text-gray-500 shrink-0">{p}%</span>
+            {topCampaigns.length === 0 ? (
+              <p className="text-gray-400 text-sm italic">No campaigns available yet.</p>
+            ) : (
+              topCampaigns.map((c) => {
+                const p = Math.min(
+                  100,
+                  Math.round(((Number(c.raised) || 0) / (Number(c.goal) || 1)) * 100),
+                );
+                return (
+                  <div key={c.id} className="space-y-1">
+                    <div className="flex justify-between text-sm gap-2">
+                      <span className="text-gray-700 font-medium truncate">{c.title}</span>
+                      <span className="text-gray-500 shrink-0">{p}%</span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                      <div
+                        className="h-2 rounded-full bg-[#0a1f44]/60"
+                        style={{ width: `${p}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                    <div className="h-2 rounded-full bg-[#0a1f44]/60" style={{ width: `${p}%` }} />
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </div>
       </div>
@@ -349,16 +578,24 @@ export function AnalyticsSection() {
           <div className="space-y-3">
             {recentLog.map((entry) => (
               <div key={entry.id} className="flex gap-3 text-sm">
-                <span className="shrink-0 bg-gray-100 text-gray-500 px-2 py-0.5 rounded text-xs font-mono">{entry.action}</span>
+                <span className="shrink-0 bg-gray-100 text-gray-500 px-2 py-0.5 rounded text-xs font-mono">
+                  {entry.action}
+                </span>
                 <div className="flex-1 min-w-0">
                   <p className="text-gray-700 truncate">{entry.detail}</p>
-                  <p className="text-gray-400 text-xs">{new Date(entry.timestamp).toLocaleString()}</p>
+                  <p className="text-gray-400 text-xs">
+                    {new Date(entry.timestamp).toLocaleString()}
+                  </p>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {safeArticles.length === 0 && (
+        <div className="text-xs text-gray-400">No article data available.</div>
+      )}
     </div>
   );
 }
