@@ -22,10 +22,14 @@ export interface PublicPaymentSettings {
   };
 }
 
+const EMPTY_PROVIDER_LABEL = "No payment provider configured";
+
 export const DEFAULT_PAYMENT_SETTINGS: PublicPaymentSettings = {
-  cardEnabled: true,
+  // No card/bank gateway is connected. Keep these disabled until a provider
+  // is implemented and configured server-side.
+  cardEnabled: false,
   bankTransferEnabled: false,
-  bankTransferProviderName: "Flutterwave",
+  bankTransferProviderName: EMPTY_PROVIDER_LABEL,
   cryptoEnabled: false,
   cryptoWallets: {
     bitcoin: "",
@@ -40,22 +44,18 @@ export const DEFAULT_PAYMENT_SETTINGS: PublicPaymentSettings = {
     accountNumber: "",
     routingNumber: "",
     swiftCode: "",
-    instructions:
-      "Please include your full name and email address as the payment reference so we can match your donation.",
+    instructions: "",
   },
 };
 
 const BANK_PROFILE_PREFIX = "hhi-provider-profile:v1:";
 
-function decodeBankProfile(rawBankName: string): {
+function decodeBankProfile(rawBankName: string | null | undefined): {
   providerName: string;
   bankName: string;
 } {
-  if (!rawBankName.startsWith(BANK_PROFILE_PREFIX)) {
-    return {
-      providerName: DEFAULT_PAYMENT_SETTINGS.bankTransferProviderName,
-      bankName: rawBankName,
-    };
+  if (!rawBankName?.startsWith(BANK_PROFILE_PREFIX)) {
+    return { providerName: EMPTY_PROVIDER_LABEL, bankName: "" };
   }
 
   try {
@@ -68,20 +68,13 @@ function decodeBankProfile(rawBankName: string): {
       parsed.providerName.trim() &&
       typeof parsed.bankName === "string"
     ) {
-      return {
-        providerName: parsed.providerName,
-        bankName: parsed.bankName,
-      };
+      return { providerName: parsed.providerName, bankName: parsed.bankName };
     }
   } catch {
-    // Malformed tagged values stay private and fall back to the connected
-    // provider label rather than being reflected to public donors.
+    // Treat malformed provider metadata as unconfigured.
   }
 
-  return {
-    providerName: DEFAULT_PAYMENT_SETTINGS.bankTransferProviderName,
-    bankName: "",
-  };
+  return { providerName: EMPTY_PROVIDER_LABEL, bankName: "" };
 }
 
 function encodeBankProfile(providerName: string, bankName: string): string {
@@ -91,8 +84,10 @@ function encodeBankProfile(providerName: string, bankName: string): string {
 function toPublic(row: PaymentSetting): PublicPaymentSettings {
   const bankProfile = decodeBankProfile(row.bankName);
   return {
-    cardEnabled: row.cardEnabled,
-    bankTransferEnabled: row.bankTransferEnabled,
+    // The previous gateway has intentionally been removed. These remain off
+    // until a replacement provider is implemented server-side.
+    cardEnabled: false,
+    bankTransferEnabled: false,
     bankTransferProviderName: bankProfile.providerName,
     cryptoEnabled: row.cryptoEnabled,
     cryptoWallets: {
@@ -103,12 +98,12 @@ function toPublic(row: PaymentSetting): PublicPaymentSettings {
       solana: row.solanaWallet,
     },
     bankDetails: {
-      bankName: bankProfile.bankName,
-      accountName: row.accountName,
-      accountNumber: row.accountNumber,
-      routingNumber: row.routingNumber,
-      swiftCode: row.swiftCode,
-      instructions: row.bankInstructions,
+      bankName: "",
+      accountName: "",
+      accountNumber: "",
+      routingNumber: "",
+      swiftCode: "",
+      instructions: "",
     },
   };
 }
@@ -124,8 +119,9 @@ export async function savePaymentSettings(
   const now = new Date();
   const values = {
     id: 1,
-    cardEnabled: settings.cardEnabled,
-    bankTransferEnabled: settings.bankTransferEnabled,
+    // Never enable an unconfigured gateway from the admin display settings.
+    cardEnabled: false,
+    bankTransferEnabled: false,
     cryptoEnabled: settings.cryptoEnabled,
     bitcoinWallet: settings.cryptoWallets.bitcoin,
     ethereumWallet: settings.cryptoWallets.ethereum,
@@ -133,14 +129,14 @@ export async function savePaymentSettings(
     usdtErc20Wallet: settings.cryptoWallets.usdtErc20,
     solanaWallet: settings.cryptoWallets.solana,
     bankName: encodeBankProfile(
-      settings.bankTransferProviderName,
-      settings.bankDetails.bankName,
+      settings.bankTransferProviderName || EMPTY_PROVIDER_LABEL,
+      "",
     ),
-    accountName: settings.bankDetails.accountName,
-    accountNumber: settings.bankDetails.accountNumber,
-    routingNumber: settings.bankDetails.routingNumber,
-    swiftCode: settings.bankDetails.swiftCode,
-    bankInstructions: settings.bankDetails.instructions,
+    accountName: "",
+    accountNumber: "",
+    routingNumber: "",
+    swiftCode: "",
+    bankInstructions: "",
     updatedAt: now,
   };
   const [row] = await db
