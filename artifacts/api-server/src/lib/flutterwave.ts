@@ -1,7 +1,9 @@
-onst FLW_BASE = "https://api.flutterwave.com/v3";
+import crypto from "node:crypto";
+
+const FLW_BASE = "https://api.flutterwave.com/v3";
 
 export function getFlutterwaveSecret(): string {
-  const key = prcocess.env.FLUTTERWAVE_SECRET_KEY;
+  const key = process.env.FLUTTERWAVE_SECRET_KEY;
   if (!key) throw new Error("FLUTTERWAVE_SECRET_KEY is not configured");
   return key;
 }
@@ -12,7 +14,7 @@ export function getFlutterwaveWebhookHash(): string | null {
 }
 
 interface FlwEnvelope<T> {
-  status?: string; // "success" | "error"
+  status?: string;
   message?: string;
   data?: T;
 }
@@ -20,11 +22,10 @@ interface FlwEnvelope<T> {
 // ── Create a hosted payment link (Flutterwave Standard) ─────────────────────
 export async function flutterwaveCreatePayment(input: {
   txRef: string;
-  amountUsd: number; // major units
+  amountUsd: number;
   email: string;
   name: string;
   redirectUrl: string;
-  /** Flutterwave payment_options string, e.g. "card" or "banktransfer". */
   paymentOptions: string;
 }): Promise<{ ok: boolean; link?: string; error?: string }> {
   const res = await fetch(`${FLW_BASE}/payments`, {
@@ -37,8 +38,6 @@ export async function flutterwaveCreatePayment(input: {
       tx_ref: input.txRef,
       amount: input.amountUsd.toFixed(2),
       currency: "USD",
-      // Explicitly request payment options; without this some accounts show
-      // "No Payment method available" on the hosted checkout for USD.
       payment_options: input.paymentOptions,
       redirect_url: input.redirectUrl,
       customer: { email: input.email, name: input.name },
@@ -48,24 +47,18 @@ export async function flutterwaveCreatePayment(input: {
       },
     }),
   });
-  const body = (await res.json().catch(() => null)) as FlwEnvelope<{
-    link?: string;
-  }> | null;
+  const body = (await res.json().catch(() => null)) as FlwEnvelope<{ link?: string }> | null;
   if (!res.ok || body?.status !== "success" || !body.data?.link) {
-    return {
-      ok: false,
-      error: body?.message ?? `Payment initialization failed (${res.status})`,
-    };
+    return { ok: false, error: body?.message ?? `Payment initialization failed (${res.status})` };
   }
   return { ok: true, link: body.data.link };
 }
 
-// ── Verify a transaction by our reference (tx_ref) ──────────────────────────
 export interface FlutterwaveVerifyData {
   id: number;
   tx_ref: string;
-  status: string; // "successful" | "failed" | "pending" | ...
-  amount: number; // major units
+  status: string;
+  amount: number;
   currency: string;
   payment_type: string | null;
   processor_response: string | null;
@@ -87,7 +80,6 @@ export async function flutterwaveVerifyByTxRef(
   );
   const body = (await res.json().catch(() => null)) as FlwEnvelope<FlutterwaveVerifyData> | null;
   if (res.status === 404 || (body?.status === "error" && /no transaction/i.test(body?.message ?? ""))) {
-    // No charge attempt exists for this reference (abandoned before paying).
     return { ok: false, notFound: true, error: body?.message ?? "Transaction not found" };
   }
   if (!res.ok || body?.status !== "success" || !body.data) {
@@ -96,9 +88,7 @@ export async function flutterwaveVerifyByTxRef(
   return { ok: true, data: body.data };
 }
 
-// ── Verify that a refund actually exists for a transaction ─────────────────
-// Never trust a webhook payload: confirm against Flutterwave's refunds API,
-// matched to the specific transaction id.
+// Confirm that a completed refund exists for a transaction.
 export async function flutterwaveFindCompletedRefund(txId: number): Promise<{
   ok: boolean;
   refunded?: boolean;
@@ -113,10 +103,10 @@ export async function flutterwaveFindCompletedRefund(txId: number): Promise<{
   if (!res.ok || body?.status !== "success" || !Array.isArray(body.data)) {
     return { ok: false, error: body?.message ?? `Refund lookup failed (${res.status})` };
   }
-  // Filter client-side too, in case the API ignores the tx_id query param.
-  rue, refunded };
-}
-const  { ok: refunded = body.data.some(
-    (r) => Number(r.tx_id) === txId && /^(completed|successful|processed)$/i.test(r.status ?? ""),
+  const refunded = body.data.some(
+    (refund) =>
+      Number(refund.tx_id) === txId &&
+      /^(completed|successful|processed)$/i.test(refund.status ?? ""),
   );
-  returnt
+  return { ok: true, refunded };
+}
