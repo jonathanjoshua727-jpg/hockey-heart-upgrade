@@ -20,6 +20,7 @@ import {
 } from "@/lib/donationApi";
 const PRESET_AMOUNTS = [50, 100, 250, 500];
 const PENDING_KEY = "hhi_pending_donation";
+const DONATION_CONTACT_EMAIL = "contact@hockeyheartinitiative.com";
 interface PendingDonation {
   reference: string;
   amount: number;
@@ -49,9 +50,9 @@ function getSafeInitialSettings(): PaymentSettings {
     return {
       ...cached,
       cardEnabled: true,
-      bankTransferEnabled: false,
+      bankTransferEnabled: true,
       bankTransferProviderName:
-        cached.bankTransferProviderName || "Flutterwave",
+        cached.bankTransferProviderName || "Email donation request",
       cryptoEnabled: false,
       cryptoWallets: {
         ...EMPTY_CRYPTO_WALLETS,
@@ -62,8 +63,8 @@ function getSafeInitialSettings(): PaymentSettings {
       paystackPublicKey: "",
       paystackEnabled: false,
       cardEnabled: true,
-      bankTransferEnabled: false,
-      bankTransferProviderName: "Flutterwave",
+      bankTransferEnabled: true,
+      bankTransferProviderName: "Email donation request",
       cryptoEnabled: false,
       cryptoWallets: {
         ...EMPTY_CRYPTO_WALLETS,
@@ -324,6 +325,43 @@ export function DonationForm() {
       // Local transaction storage must not prevent the donor flow.
     }
   }
+  function openDonationEmailRequest(method: "bank_transfer" | "card") {
+    const validationError = validate();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    const methodLabel =
+      method === "bank_transfer" ? "Bank Transfer" : "Credit / Debit Card";
+
+    const donorName = anonymous
+      ? "Anonymous"
+      : `${firstName.trim()} ${lastName.trim()}`.trim();
+
+    const subject = encodeURIComponent(
+      `Donation request: ${methodLabel} - $${finalAmount.toLocaleString()} USD`,
+    );
+
+    const body = encodeURIComponent(
+      [
+        "Hello Hockey Heart Initiative,",
+        "",
+        "I would like to make a donation.",
+        `Method: ${methodLabel}`,
+        `Amount: $${finalAmount.toLocaleString()} USD`,
+        `Cause: ${causeLabel}`,
+        `Donor Name: ${donorName}`,
+        `Email: ${email.trim()}`,
+        `Anonymous: ${anonymous ? "Yes" : "No"}`,
+        message.trim() ? `Message: ${message.trim()}` : "",
+        "",
+        "Please contact me to arrange payment.",
+      ].join("\n"),
+    );
+
+    window.location.href = `mailto:${DONATION_CONTACT_EMAIL}?subject=${subject}&body=${body}`;
+  }
   async function handleGatewayDonation(
     payMethod: "bank_transfer" | "card",
   ) {
@@ -384,22 +422,10 @@ export function DonationForm() {
     }
   }
   function handleBankTransfer() {
-    if (!bankConfigured) {
-      setError(
-        "Bank transfer payments are not yet configured. Please contact us to complete your donation.",
-      );
-      return;
-    }
-    return handleGatewayDonation("bank_transfer");
+    openDonationEmailRequest("bank_transfer");
   }
   function handleCard() {
-    if (!cardConfigured) {
-      setError(
-        "Card payments are not yet configured. Please contact us.",
-      );
-      return;
-    }
-    return handleGatewayDonation("card");
+    openDonationEmailRequest("card");
   }
   function handleCryptoConfirm() {
     const validationError = validate();
@@ -632,7 +658,7 @@ export function DonationForm() {
               />
               <Label
                 htmlFor={`cause-${item.id}`}
-                className="flex items-center justify-center p-4 border border-primary/20 rounded-xl cursor-pointer hover:bg-primary/5 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 transition-colors font-medium text-primary text-center"
+                className="flex items-center justify-center p-4 border border-primary/20 rounded-xl cursor-pointer hover:bg-primary/5 peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5"
               >
                 {item.label}
               </Label>
@@ -753,14 +779,14 @@ export function DonationForm() {
               label: settings.bankTransferProviderName
                 ? `Bank Transfer via ${settings.bankTransferProviderName}`
                 : "Bank Transfer",
-              tag: "Recommended",
-              enabled: bankConfigured,
+              tag: settings.bankTransferEnabled ? "Recommended" : "Email Request",
+              enabled: bankConfigured || true,
             },
             {
               id: "card" as PayMethod,
               label: "Credit / Debit Card",
-              tag: "",
-              enabled: cardConfigured,
+              tag: cardConfigured ? "" : "Email Request",
+              enabled: cardConfigured || true,
             },
             {
               id: "crypto" as PayMethod,
@@ -806,7 +832,7 @@ export function DonationForm() {
         </div>
         {/* Bank Transfer */}
         {method === "bank" &&
-          bankConfigured && (
+          !bankConfigured && (
             <div className="bg-muted/40 border border-border rounded-xl p-5 space-y-2">
               <p className="text-sm font-semibold text-foreground">
                 Bank transfer via{" "}
@@ -814,11 +840,25 @@ export function DonationForm() {
                   "our payment provider"}
               </p>
               <p className="text-sm text-muted-foreground">
-                After clicking the button below, you'll be
-                taken to a secure checkout page showing the
-                transfer options available in your region.
-                Your donation is confirmed automatically once
-                the payment is received.
+                At the moment, we are arranging bank donations by email. Please send
+                your donation details to us and we will confirm the next step.
+              </p>
+            </div>
+          )}
+        {/* Card notice */}
+        {method === "card" &&
+          !cardConfigured && (
+            <div className="bg-muted/40 border border-border rounded-xl p-4">
+              <p className="text-sm text-muted-foreground">
+                Card payments are currently being set up. Please email us to arrange
+                your donation at{" "}
+                <a
+                  href={`mailto:${DONATION_CONTACT_EMAIL}`}
+                  className="text-primary underline"
+                >
+                  {DONATION_CONTACT_EMAIL}
+                </a>
+                .
               </p>
             </div>
           )}
@@ -910,32 +950,16 @@ export function DonationForm() {
                 Cryptocurrency wallets are being configured.
                 Please contact{" "}
                 <a
-                  href="mailto:contact@hockeyheartinitiative.com"
+                  href={`mailto:${DONATION_CONTACT_EMAIL}`}
                   className="text-primary underline"
                 >
-                  contact@hockeyheartinitiative.com
+                  {DONATION_CONTACT_EMAIL}
                 </a>{" "}
                 to donate via crypto.
               </p>
             )}
           </div>
         )}
-        {method === "card" &&
-          !cardConfigured && (
-            <div className="bg-muted/40 border border-border rounded-xl p-4">
-              <p className="text-sm text-muted-foreground">
-                Card payments are being configured. Please
-                contact us at{" "}
-                <a
-                  href="mailto:contact@hockeyheartinitiative.com"
-                  className="text-primary underline"
-                >
-                  contact@hockeyheartinitiative.com
-                </a>
-                .
-              </p>
-            </div>
-          )}
       </div>
       {/* Error */}
       {error && (
@@ -950,17 +974,9 @@ export function DonationForm() {
       <Button
         size="lg"
         type="button"
-        disabled={
-          loading || !selectedMethodConfigured
-        }
+        disabled={loading}
         onClick={() => {
           setError("");
-          if (!selectedMethodConfigured) {
-            setError(
-              "This payment method is not currently available.",
-            );
-            return;
-          }
           if (method === "bank") {
             handleBankTransfer();
             return;
@@ -971,7 +987,9 @@ export function DonationForm() {
           }
           if (method === "crypto") {
             handleCryptoConfirm();
+            return;
           }
+          setError("This payment method is not currently available.");
         }}
         className="w-full min-w-0 min-h-16 h-auto py-3 px-3 whitespace-normal break-words text-base sm:text-xl leading-tight rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-md disabled:opacity-60"
       >
