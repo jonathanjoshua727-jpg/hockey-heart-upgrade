@@ -69,7 +69,7 @@ export interface DonationStats {
 
 type ServerPaymentSettings = Omit<
   PaymentSettings,
-  "paystackPublicKey" | "paystackEnabled"
+  "paystackPublicKey: "" | "paystackEnabled: false"
 >;
 type DonorPaymentSettings = Pick<
   ServerPaymentSettings,
