@@ -251,7 +251,10 @@ export function AnalyticsSection() {
             <div key={label} className={`${bg} rounded-2xl p-5`}>
               <p className={`text-2xl font-bold ${color}`}>{value}</p>
               <p className="text-xs text-gray-500 mt-1">{label}</p>
-            </div>
+              </div>
           ))}
         </div>
       </div>
+    </div>
+  );
+}
