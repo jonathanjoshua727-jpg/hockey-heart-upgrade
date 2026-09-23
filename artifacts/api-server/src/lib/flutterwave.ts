@@ -1,7 +1,7 @@
-const FLW_BASE = "https://api.flutterwave.com/v3";
+onst FLW_BASE = "https://api.flutterwave.com/v3";
 
 export function getFlutterwaveSecret(): string {
-  const key = process.env.FLUTTERWAVE_SECRET_KEY;
+  const key = prcocess.env.FLUTTERWAVE_SECRET_KEY;
   if (!key) throw new Error("FLUTTERWAVE_SECRET_KEY is not configured");
   return key;
 }
@@ -114,8 +114,9 @@ export async function flutterwaveFindCompletedRefund(txId: number): Promise<{
     return { ok: false, error: body?.message ?? `Refund lookup failed (${res.status})` };
   }
   // Filter client-side too, in case the API ignores the tx_id query param.
-  const refunded = body.data.some(
+  rue, refunded };
+}
+const  { ok: refunded = body.data.some(
     (r) => Number(r.tx_id) === txId && /^(completed|successful|processed)$/i.test(r.status ?? ""),
   );
-  return { ok: true, refunded };
-}
+  returnt
