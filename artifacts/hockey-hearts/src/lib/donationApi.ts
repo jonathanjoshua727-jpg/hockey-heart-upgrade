@@ -5,6 +5,9 @@ import type { PaymentSettings } from "./contentStore";
 
 const API_BASE = "/api";
 
+const DONATION_UNAVAILABLE_MESSAGE =
+  "Online donations are temporarily unavailable. Please contact Contact@hockeyheartinitiative.com for assistance.";
+
 export interface InitializeInput {
   amount: number;
   causeId: string;
@@ -62,17 +65,33 @@ export interface DonationStats {
     cancelled: number;
     refunded: number;
   };
-  byCause: { causeId: string; causeLabel: string; total: number; count: number }[];
-  byMethod: { method: string; total: number; count: number }[];
-  byCurrency: { currency: string; total: number; count: number }[];
+  byCause: {
+    causeId: string;
+    causeLabel: string;
+    total: number;
+    count: number;
+  }[];
+  byMethod: {
+    method: string;
+    total: number;
+    count: number;
+  }[];
+  byCurrency: {
+    currency: string;
+    total: number;
+    count: number;
+  }[];
 }
 
 type ServerPaymentSettings = Omit<
   PaymentSettings,
   "paystackPublicKey" | "paystackEnabled"
 >;
+
 type DonorPaymentSettings = Pick<
   ServerPaymentSettings,
+  | "activeProvider"
+  | "paymentGateways"
   | "cardEnabled"
   | "bankTransferEnabled"
   | "bankTransferProviderName"
@@ -98,49 +117,116 @@ function withoutLegacyFields(
     paystackEnabled: _paystackEnabled,
     ...serverSettings
   } = settings;
+
   return serverSettings;
 }
 
-async function jsonFetch<T>(path: string, init?: RequestInit): Promise<T> {
+async function jsonFetch<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
   });
-  const body = (await res.json().catch(() => ({}))) as T & { error?: string };
+
+  const body = (await res.json().catch(() => ({}))) as T & {
+    error?: string;
+  };
+
   if (!res.ok) {
+    // Keep technical 404 responses away from donors.
+    if (res.status === 404) {
+      throw new Error(DONATION_UNAVAILABLE_MESSAGE);
+    }
+
     throw new Error(body.error || `Request failed (${res.status})`);
   }
+
   return body;
 }
 
-export function initializeDonation(input: InitializeInput): Promise<InitializeResult> {
+export async function initializeDonation(
+  input: InitializeInput,
+): Promise<InitializeResult> {
+  /*
+   * Check the central public payment configuration before attempting
+   * to initialize a donation.
+   *
+   * If Admin has not activated a configured payment gateway, the donor
+   * receives a professional availability message instead of a technical
+   * API error.
+   */
+  const settings = await fetchPublicPaymentSettings();
+
+  const activeProvider = settings.activeProvider;
+
+  if (!activeProvider) {
+    throw new Error(DONATION_UNAVAILABLE_MESSAGE);
+  }
+
+  const activeGateway = settings.paymentGateways?.find(
+    (gateway) => gateway.id === activeProvider,
+  );
+
+  if (!activeGateway || !activeGateway.enabled) {
+    throw new Error(DONATION_UNAVAILABLE_MESSAGE);
+  }
+
+  if (!activeGateway.configured) {
+    throw new Error(DONATION_UNAVAILABLE_MESSAGE);
+  }
+
   return jsonFetch<InitializeResult>("/donations/initialize", {
     method: "POST",
-    body: JSON.stringify({ ...input, currency: "USD" }),
+    body: JSON.stringify({
+      ...input,
+      currency: "USD",
+    }),
   });
 }
 
 export async function verifyDonation(
   reference: string,
-): Promise<{ verified: boolean; donation?: VerifiedDonation; error?: string }> {
+): Promise<{
+  verified: boolean;
+  donation?: VerifiedDonation;
+  error?: string;
+}> {
   const res = await fetch(`${API_BASE}/donations/verify`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({ reference }),
   });
+
   const body = (await res.json().catch(() => ({}))) as {
     verified?: boolean;
     donation?: VerifiedDonation;
     error?: string;
   };
-  return { verified: !!body.verified, donation: body.donation, error: body.error };
+
+  return {
+    verified: !!body.verified,
+    donation: body.donation,
+    error: body.error,
+  };
 }
 
 export async function fetchPublicPaymentSettings(): Promise<PaymentSettings> {
-  const settings = await jsonFetch<DonorPaymentSettings>("/payment-settings");
+  const settings = await jsonFetch<DonorPaymentSettings>(
+    "/payment-settings",
+  );
+
   return withLegacyCompatibility({
     ...settings,
-    // Bank-account fields are admin-only and are never returned by the public endpoint.
+
+    // Bank-account fields are admin-only and are never returned
+    // by the public endpoint.
     bankDetails: getLocalBankDetails(),
   });
 }
@@ -157,6 +243,7 @@ function getLocalBankDetails(): PaymentSettings["bankDetails"] {
 }
 
 // ── Admin API ──────────────────────────────────────────────────────────
+
 const ADMIN_TOKEN_KEY = "hhi_admin_api_token";
 
 export function getAdminApiToken(): string | null {
@@ -172,10 +259,17 @@ export async function adminServerLogin(
   password: string,
 ): Promise<boolean> {
   try {
-    const { token } = await jsonFetch<{ token: string }>("/admin/login", {
-      method: "POST",
-      body: JSON.stringify({ username, password }),
-    });
+    const { token } = await jsonFetch<{ token: string }>(
+      "/admin/login",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          username,
+          password,
+        }),
+      },
+    );
+
     sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
     return true;
   } catch {
@@ -188,16 +282,24 @@ export async function adminUpdateServerCredentials(
   password: string,
 ): Promise<boolean> {
   const token = getAdminApiToken();
+
   if (!token) return false;
+
   try {
-    const { token: newToken } = await jsonFetch<{ ok: boolean; token: string }>(
-      "/admin/credentials",
-      {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ username, password }),
+    const { token: newToken } = await jsonFetch<{
+      ok: boolean;
+      token: string;
+    }>("/admin/credentials", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
       },
-    );
+      body: JSON.stringify({
+        username,
+        password,
+      }),
+    });
+
     sessionStorage.setItem(ADMIN_TOKEN_KEY, newToken);
     return true;
   } catch {
@@ -207,54 +309,91 @@ export async function adminUpdateServerCredentials(
 
 function adminHeaders(): Record<string, string> {
   const token = getAdminApiToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
+
+  return token
+    ? {
+        Authorization: `Bearer ${token}`,
+      }
+    : {};
 }
 
 export async function sendAdminTestEmail(
   to: string,
-): Promise<{ ok: boolean; message?: string; error?: string }> {
+): Promise<{
+  ok: boolean;
+  message?: string;
+  error?: string;
+}> {
   const token = getAdminApiToken();
-  if (!token) return { ok: false, error: "Not authenticated." };
+
+  if (!token) {
+    return {
+      ok: false,
+      error: "Not authenticated.",
+    };
+  }
+
   try {
-    const result = await jsonFetch<{ ok: boolean; message?: string }>(
-      "/admin/test-email",
-      {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ to }),
+    const result = await jsonFetch<{
+      ok: boolean;
+      message?: string;
+    }>("/admin/test-email", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
       },
-    );
+      body: JSON.stringify({ to }),
+    });
+
     return result;
   } catch (err) {
-    return { ok: false, error: (err as Error).message };
+    return {
+      ok: false,
+      error: (err as Error).message,
+    };
   }
 }
 
 export function fetchAdminDonations(
-  params: { status?: string; search?: string; causeId?: string } = {},
+  params: {
+    status?: string;
+    search?: string;
+    causeId?: string;
+  } = {},
 ): Promise<{ donations: ServerDonation[] }> {
   const qs = new URLSearchParams();
+
   if (params.status) qs.set("status", params.status);
   if (params.search) qs.set("search", params.search);
   if (params.causeId) qs.set("causeId", params.causeId);
+
   const q = qs.toString();
+
   return jsonFetch<{ donations: ServerDonation[] }>(
     `/admin/donations${q ? `?${q}` : ""}`,
-    { headers: adminHeaders() },
+    {
+      headers: adminHeaders(),
+    },
   );
 }
 
 export function fetchDonationStats(): Promise<DonationStats> {
-  return jsonFetch<DonationStats>("/admin/donations/stats", {
-    headers: adminHeaders(),
-  });
+  return jsonFetch<DonationStats>(
+    "/admin/donations/stats",
+    {
+      headers: adminHeaders(),
+    },
+  );
 }
 
 export async function fetchAdminPaymentSettings(): Promise<PaymentSettings> {
   const settings = await jsonFetch<ServerPaymentSettings>(
     "/admin/payment-settings",
-    { headers: adminHeaders() },
+    {
+      headers: adminHeaders(),
+    },
   );
+
   return withLegacyCompatibility(settings);
 }
 
@@ -269,5 +408,6 @@ export async function saveAdminPaymentSettings(
       body: JSON.stringify(withoutLegacyFields(settings)),
     },
   );
+
   return withLegacyCompatibility(saved);
 }
