@@ -4,14 +4,47 @@ import {
   logActivity,
   type PaymentSettings,
 } from "@/lib/contentStore";
-import { Save, ShieldAlert, Bitcoin, Wallet, CreditCard } from "lucide-react";
+import {
+  Save,
+  ShieldAlert,
+  Bitcoin,
+  Wallet,
+  CreditCard,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import {
   fetchAdminPaymentSettings,
   saveAdminPaymentSettings,
 } from "@/lib/donationApi";
 
+type PaymentGateway = {
+  id: string;
+  name: string;
+  type: string;
+  enabled: boolean;
+  configured: boolean;
+};
+
 const EMPTY_PAYMENT_SETTINGS: PaymentSettings = {
   activeProvider: null,
+
+  paymentGateways: [
+    {
+      id: "flutterwave",
+      name: "Flutterwave",
+      type: "flutterwave",
+      enabled: false,
+      configured: false,
+    },
+    {
+      id: "paystack",
+      name: "Paystack",
+      type: "paystack",
+      enabled: false,
+      configured: false,
+    },
+  ],
 
   paystackPublicKey: "",
   paystackEnabled: false,
@@ -47,14 +80,35 @@ function asBoolean(value: unknown, fallback: boolean): boolean {
   return typeof value === "boolean" ? value : fallback;
 }
 
-function normalizeActiveProvider(
-  value: unknown,
-): PaymentSettings["activeProvider"] {
-  if (value === "flutterwave" || value === "paystack") {
-    return value;
+function normalizeGateways(value: unknown): PaymentGateway[] {
+  if (!Array.isArray(value)) {
+    return EMPTY_PAYMENT_SETTINGS.paymentGateways;
   }
 
-  return null;
+  return value
+    .filter(
+      (gateway) =>
+        gateway &&
+        typeof gateway === "object" &&
+        typeof (gateway as PaymentGateway).id === "string",
+    )
+    .map((gateway) => {
+      const item = gateway as Partial<PaymentGateway>;
+
+      return {
+        id: asString(item.id),
+        name: asString(item.name, "Unnamed Gateway"),
+        type: asString(item.type, "custom"),
+        enabled: asBoolean(item.enabled, false),
+        configured: asBoolean(item.configured, false),
+      };
+    });
+}
+
+function normalizeActiveProvider(value: unknown): string | null {
+  return typeof value === "string" && value.trim()
+    ? value
+    : null;
 }
 
 function normalizePaymentSettings(value: unknown): PaymentSettings {
@@ -64,20 +118,34 @@ function normalizePaymentSettings(value: unknown): PaymentSettings {
       : {};
 
   const wallets =
-    source.cryptoWallets && typeof source.cryptoWallets === "object"
+    source.cryptoWallets &&
+    typeof source.cryptoWallets === "object"
       ? source.cryptoWallets
       : {};
 
   const bankDetails =
-    source.bankDetails && typeof source.bankDetails === "object"
+    source.bankDetails &&
+    typeof source.bankDetails === "object"
       ? source.bankDetails
       : {};
 
   return {
-    activeProvider: normalizeActiveProvider(source.activeProvider),
+    activeProvider: normalizeActiveProvider(
+      source.activeProvider,
+    ),
 
-    paystackPublicKey: asString(source.paystackPublicKey),
-    paystackEnabled: asBoolean(source.paystackEnabled, false),
+    paymentGateways: normalizeGateways(
+      source.paymentGateways,
+    ),
+
+    paystackPublicKey: asString(
+      source.paystackPublicKey,
+    ),
+
+    paystackEnabled: asBoolean(
+      source.paystackEnabled,
+      false,
+    ),
 
     cardEnabled: asBoolean(
       source.cardEnabled,
@@ -119,14 +187,21 @@ function normalizePaymentSettings(value: unknown): PaymentSettings {
 }
 
 export function PaymentSection() {
-  const [settings, setSettings] = useState<PaymentSettings>(
-    EMPTY_PAYMENT_SETTINGS,
-  );
+  const [settings, setSettings] =
+    useState<PaymentSettings>(
+      EMPTY_PAYMENT_SETTINGS,
+    );
 
   const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const [newGatewayName, setNewGatewayName] =
+    useState("");
+
+  const [showAddGateway, setShowAddGateway] =
+    useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -138,14 +213,17 @@ export function PaymentSection() {
       let localSettings: PaymentSettings;
 
       try {
-        localSettings = normalizePaymentSettings(getPaymentSettings());
+        localSettings = normalizePaymentSettings(
+          getPaymentSettings(),
+        );
       } catch (error) {
         console.error(
           "Payment settings: failed to load local settings",
           error,
         );
 
-        localSettings = EMPTY_PAYMENT_SETTINGS;
+        localSettings =
+          EMPTY_PAYMENT_SETTINGS;
       }
 
       if (mounted) {
@@ -153,10 +231,15 @@ export function PaymentSection() {
       }
 
       try {
-        const serverSettings = await fetchAdminPaymentSettings();
+        const serverSettings =
+          await fetchAdminPaymentSettings();
 
         if (mounted) {
-          setSettings(normalizePaymentSettings(serverSettings));
+          setSettings(
+            normalizePaymentSettings(
+              serverSettings,
+            ),
+          );
         }
       } catch (error) {
         console.error(
@@ -190,16 +273,24 @@ export function PaymentSection() {
     setSaveError("");
 
     try {
-      const normalized = normalizePaymentSettings(settings);
+      const normalized =
+        normalizePaymentSettings(settings);
 
-      const savedSettings = await saveAdminPaymentSettings(normalized);
+      const savedSettings =
+        await saveAdminPaymentSettings(
+          normalized,
+        );
 
-      setSettings(normalizePaymentSettings(savedSettings));
+      setSettings(
+        normalizePaymentSettings(
+          savedSettings,
+        ),
+      );
 
       logActivity(
         "SAVE",
         "Payments",
-        "Payment settings updated",
+        "Payment gateway and payment settings updated",
       );
 
       setSaved(true);
@@ -207,10 +298,10 @@ export function PaymentSection() {
       setTimeout(() => {
         setSaved(false);
       }, 2500);
-    } catch (err) {
+    } catch (error) {
       setSaveError(
-        err instanceof Error
-          ? err.message
+        error instanceof Error
+          ? error.message
           : "Could not save payment settings.",
       );
     } finally {
@@ -218,7 +309,9 @@ export function PaymentSection() {
     }
   }
 
-  function update(patch: Partial<PaymentSettings>) {
+  function update(
+    patch: Partial<PaymentSettings>,
+  ) {
     setSettings((current) => ({
       ...current,
       ...patch,
@@ -251,15 +344,117 @@ export function PaymentSection() {
     }));
   }
 
+  function addGateway() {
+    const name = newGatewayName.trim();
+
+    if (!name) {
+      return;
+    }
+
+    const id = `${name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")}-${Date.now()}`;
+
+    const newGateway: PaymentGateway = {
+      id,
+      name,
+      type: "custom",
+      enabled: false,
+      configured: false,
+    };
+
+    setSettings((current) => ({
+      ...current,
+      paymentGateways: [
+        ...current.paymentGateways,
+        newGateway,
+      ],
+    }));
+
+    setNewGatewayName("");
+    setShowAddGateway(false);
+  }
+
+  function removeGateway(id: string) {
+    const gateway = settings.paymentGateways.find(
+      (item) => item.id === id,
+    );
+
+    if (!gateway) {
+      return;
+    }
+
+    // Built-in gateways remain available.
+    if (
+      gateway.type === "flutterwave" ||
+      gateway.type === "paystack"
+    ) {
+      return;
+    }
+
+    setSettings((current) => ({
+      ...current,
+      activeProvider:
+        current.activeProvider === id
+          ? null
+          : current.activeProvider,
+
+      paymentGateways:
+        current.paymentGateways.filter(
+          (item) => item.id !== id,
+        ),
+    }));
+  }
+
+  function toggleGateway(id: string) {
+    setSettings((current) => ({
+      ...current,
+      paymentGateways:
+        current.paymentGateways.map((gateway) =>
+          gateway.id === id
+            ? {
+                ...gateway,
+                enabled: !gateway.enabled,
+              }
+            : gateway,
+        ),
+    }));
+  }
+
+  function selectActiveGateway(
+    id: string,
+  ) {
+    if (!id) {
+      update({
+        activeProvider: null,
+      });
+
+      return;
+    }
+
+    const gateway =
+      settings.paymentGateways.find(
+        (item) => item.id === id,
+      );
+
+    if (!gateway) {
+      return;
+    }
+
+    update({
+      activeProvider: gateway.id,
+    });
+  }
+
   const inputCls =
     "w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0a1f44]/20 focus:border-[#0a1f44]";
 
-  const gatewayLabel =
-    settings.activeProvider === "flutterwave"
-      ? "Flutterwave"
-      : settings.activeProvider === "paystack"
-        ? "Paystack"
-        : "No gateway configured";
+  const activeGateway =
+    settings.paymentGateways.find(
+      (gateway) =>
+        gateway.id === settings.activeProvider,
+    );
 
   return (
     <div className="space-y-8">
@@ -269,7 +464,8 @@ export function PaymentSection() {
         </h2>
 
         <p className="text-gray-500 text-sm mt-1">
-          Configure payment methods and choose the active payment gateway.
+          Configure payment methods and manage
+          payment gateways.
         </p>
       </div>
 
@@ -289,14 +485,15 @@ export function PaymentSection() {
         <ShieldAlert className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
 
         <div className="text-sm text-amber-800">
-          <strong>Security note:</strong> Payment gateway API keys are stored
-          server-side in encrypted environment variables. Never place or expose
-          secret gateway keys in the website or browser.
+          <strong>Security note:</strong>{" "}
+          Payment gateway secret/API keys must remain
+          server-side. Never put secret credentials in
+          frontend code or expose them to donors.
         </div>
       </div>
 
-      {/* PAYMENT GATEWAY */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-5">
+      {/* PAYMENT GATEWAYS */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-6">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
             <CreditCard className="w-4 h-4 text-blue-600" />
@@ -308,19 +505,24 @@ export function PaymentSection() {
             </h3>
 
             <p className="text-xs text-gray-500 mt-0.5">
-              Choose which configured gateway will process online donations.
+              Choose the gateway that processes online
+              donations. You can add additional gateways
+              when needed.
             </p>
           </div>
         </div>
 
         <div
           className={`rounded-xl border px-4 py-3 text-sm ${
-            settings.activeProvider
+            activeGateway
               ? "border-green-200 bg-green-50 text-green-800"
               : "border-amber-200 bg-amber-50 text-amber-800"
           }`}
         >
-          <strong>Current gateway:</strong> {gatewayLabel}
+          <strong>Current active gateway:</strong>{" "}
+          {activeGateway
+            ? activeGateway.name
+            : "No gateway configured"}
         </div>
 
         <div className="space-y-1.5">
@@ -328,65 +530,194 @@ export function PaymentSection() {
             htmlFor="active-payment-provider"
             className="text-sm font-medium text-gray-700"
           >
-            Active payment provider
+            Active payment gateway
           </label>
 
           <select
             id="active-payment-provider"
             value={settings.activeProvider ?? ""}
-            onChange={(event) => {
-              const value = event.target.value;
-
-              update({
-                activeProvider:
-                  value === "flutterwave" || value === "paystack"
-                    ? value
-                    : null,
-              });
-            }}
+            onChange={(event) =>
+              selectActiveGateway(
+                event.target.value,
+              )
+            }
             className={inputCls}
           >
-            <option value="">No gateway configured</option>
-            <option value="flutterwave">Flutterwave</option>
-            <option value="paystack">Paystack</option>
+            <option value="">
+              No gateway configured
+            </option>
+
+            {settings.paymentGateways.map(
+              (gateway) => (
+                <option
+                  key={gateway.id}
+                  value={gateway.id}
+                  disabled={!gateway.enabled}
+                >
+                  {gateway.name}
+                  {!gateway.enabled
+                    ? " (disabled)"
+                    : ""}
+                </option>
+              ),
+            )}
           </select>
 
           <p className="text-xs text-gray-500">
-            No gateway is selected by default. The administrator must
-            explicitly choose a provider before online donations can be
-            processed.
+            Selecting a gateway does not create its API
+            integration. The selected gateway must have
+            a working server-side integration and
+            credentials before donations can be processed.
           </p>
+        </div>
+
+        {/* GATEWAY LIST */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-gray-800">
+              Available Gateways
+            </h4>
+
+            <button
+              type="button"
+              onClick={() =>
+                setShowAddGateway(
+                  (current) => !current,
+                )
+              }
+              className="flex items-center gap-2 text-sm font-semibold text-[#0a1f44] hover:underline"
+            >
+              <Plus className="w-4 h-4" />
+              Add Payment Gateway
+            </button>
+          </div>
+
+          {showAddGateway && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 space-y-3">
+              <div>
+                <label className="text-sm font-medium text-gray-700">
+                  Gateway name
+                </label>
+
+                <input
+                  value={newGatewayName}
+                  onChange={(event) =>
+                    setNewGatewayName(
+                      event.target.value,
+                    )
+                  }
+                  placeholder="e.g. Airwallex"
+                  className={`${inputCls} mt-1.5`}
+                />
+              </div>
+
+              <p className="text-xs text-gray-600">
+                This adds the gateway to the Admin
+                Dashboard. It does not automatically create
+                the server-side API integration.
+              </p>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={addGateway}
+                  disabled={
+                    !newGatewayName.trim()
+                  }
+                  className="px-4 py-2 rounded-lg bg-[#0a1f44] text-white text-sm font-semibold disabled:opacity-50"
+                >
+                  Add Gateway
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddGateway(false);
+                    setNewGatewayName("");
+                  }}
+                  className="px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 text-sm font-semibold"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-3">
+            {settings.paymentGateways.map(
+              (gateway) => (
+                <div
+                  key={gateway.id}
+                  className="flex items-center justify-between gap-4 p-4 border border-gray-100 rounded-xl"
+                >
+                  <div>
+                    <p className="font-medium text-gray-900 text-sm">
+                      {gateway.name}
+                    </p>
+
+                    <p className="text-xs text-gray-500 mt-1">
+                      {gateway.configured
+                        ? "Server integration configured"
+                        : "Server integration not configured"}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      aria-pressed={
+                        gateway.enabled
+                      }
+                      onClick={() =>
+                        toggleGateway(
+                          gateway.id,
+                        )
+                      }
+                      className={`w-10 h-6 rounded-full transition-colors relative ${
+                        gateway.enabled
+                          ? "bg-[#0a1f44]"
+                          : "bg-gray-200"
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                          gateway.enabled
+                            ? "translate-x-5"
+                            : "translate-x-1"
+                        }`}
+                      />
+                    </button>
+
+                    {gateway.type ===
+                      "custom" && (
+                      <button
+                        type="button"
+                        title="Remove gateway"
+                        onClick={() =>
+                          removeGateway(
+                            gateway.id,
+                          )
+                        }
+                        className="text-gray-400 hover:text-red-600"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ),
+            )}
+          </div>
         </div>
 
         {!settings.activeProvider && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            <strong>No payment gateway is active.</strong> Donation checkout
-            must remain unavailable until an administrator selects a payment
-            provider.
+            <strong>No payment gateway is active.</strong>{" "}
+            Online donation checkout must remain unavailable
+            until an administrator selects and configures a
+            payment gateway.
           </div>
         )}
-
-        {settings.activeProvider === "flutterwave" && (
-          <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
-            <strong>Flutterwave selected.</strong> The server must have the
-            required Flutterwave credentials configured before donations can be
-            processed.
-          </div>
-        )}
-
-        {settings.activeProvider === "paystack" && (
-          <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
-            <strong>Paystack selected.</strong> The server must have the
-            required Paystack credentials configured before donations can be
-            processed.
-          </div>
-        )}
-
-        <div className="rounded-xl border border-gray-200 px-4 py-3 text-xs text-gray-500">
-          The gateway selection controls which server-side payment integration
-          is used. Gateway secret keys are never sent to donors or stored in
-          frontend code.
-        </div>
       </div>
 
       {/* PAYMENT METHODS */}
@@ -400,57 +731,59 @@ export function PaymentSection() {
             {
               key: "cardEnabled",
               label: "Credit / Debit Card",
-              desc: "Card payments processed through the active secure hosted gateway.",
+              desc: "Card payments processed through the active secure gateway.",
             },
             {
               key: "bankTransferEnabled",
               label: "Bank Transfer",
-              desc: "Show bank transfer instructions when supported by the active payment configuration.",
+              desc: "Show bank transfer options supported by the configured payment setup.",
             },
             {
               key: "cryptoEnabled",
               label: "Cryptocurrency",
               desc: "Show configured cryptocurrency wallet addresses to donors.",
             },
-          ] as const).map(({ key, label, desc }) => (
-            <div
-              key={key}
-              className="flex items-start justify-between gap-4 p-4 border border-gray-100 rounded-xl"
-            >
-              <div>
-                <p className="font-medium text-gray-900 text-sm">
-                  {label}
-                </p>
-
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {desc}
-                </p>
-              </div>
-
-              <button
-                type="button"
-                aria-pressed={settings[key]}
-                onClick={() =>
-                  update({
-                    [key]: !settings[key],
-                  })
-                }
-                className={`mt-0.5 shrink-0 w-10 h-6 rounded-full transition-colors cursor-pointer ${
-                  settings[key]
-                    ? "bg-[#0a1f44]"
-                    : "bg-gray-200"
-                } relative`}
+          ] as const).map(
+            ({ key, label, desc }) => (
+              <div
+                key={key}
+                className="flex items-start justify-between gap-4 p-4 border border-gray-100 rounded-xl"
               >
-                <span
-                  className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                <div>
+                  <p className="font-medium text-gray-900 text-sm">
+                    {label}
+                  </p>
+
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {desc}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  aria-pressed={settings[key]}
+                  onClick={() =>
+                    update({
+                      [key]: !settings[key],
+                    })
+                  }
+                  className={`mt-0.5 shrink-0 w-10 h-6 rounded-full transition-colors cursor-pointer ${
                     settings[key]
-                      ? "translate-x-5"
-                      : "translate-x-1"
-                  }`}
-                />
-              </button>
-            </div>
-          ))}
+                      ? "bg-[#0a1f44]"
+                      : "bg-gray-200"
+                  } relative`}
+                >
+                  <span
+                    className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                      settings[key]
+                        ? "translate-x-5"
+                        : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+            ),
+          )}
         </div>
       </div>
 
@@ -467,17 +800,15 @@ export function PaymentSection() {
             </h3>
 
             <p className="text-xs text-gray-500 mt-0.5">
-              The provider name is shown to donors when bank transfer is
-              enabled.
+              Display information for bank transfer
+              donations.
             </p>
           </div>
         </div>
 
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
-          Changing this profile does not connect a new payment gateway. A new
-          provider still requires a secure server-side integration,
-          credentials, webhooks, and payment verification before it can process
-          donations.
+          Changing this display profile does not connect
+          a new payment gateway.
         </div>
 
         <div className="space-y-1.5">
@@ -486,19 +817,18 @@ export function PaymentSection() {
           </label>
 
           <input
-            value={settings.bankTransferProviderName}
+            value={
+              settings.bankTransferProviderName
+            }
             onChange={(event) =>
               update({
-                bankTransferProviderName: event.target.value,
+                bankTransferProviderName:
+                  event.target.value,
               })
             }
             placeholder="e.g. Flutterwave"
             className={inputCls}
           />
-
-          <p className="text-xs text-gray-500">
-            This is a display label and does not change the active gateway.
-          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -511,12 +841,14 @@ export function PaymentSection() {
             {
               key: "accountName",
               label: "Account Name",
-              placeholder: "Hockey Heart Initiative",
+              placeholder:
+                "Hockey Heart Initiative",
             },
             {
               key: "accountNumber",
               label: "Account Number",
-              placeholder: "XXXXXXXXXXXX",
+              placeholder:
+                "XXXXXXXXXXXX",
             },
             {
               key: "routingNumber",
@@ -526,27 +858,39 @@ export function PaymentSection() {
             {
               key: "swiftCode",
               label: "SWIFT / BIC Code",
-              placeholder: "e.g. CHASUS33",
+              placeholder:
+                "e.g. CHASUS33",
             },
-          ] as const).map(({ key, label, placeholder }) => (
-            <div
-              key={key}
-              className="space-y-1.5"
-            >
-              <label className="text-sm font-medium text-gray-700">
-                {label}
-              </label>
+          ] as const).map(
+            ({
+              key,
+              label,
+              placeholder,
+            }) => (
+              <div
+                key={key}
+                className="space-y-1.5"
+              >
+                <label className="text-sm font-medium text-gray-700">
+                  {label}
+                </label>
 
-              <input
-                value={settings.bankDetails[key]}
-                onChange={(event) =>
-                  updateBankDetail(key, event.target.value)
-                }
-                placeholder={placeholder}
-                className={inputCls}
-              />
-            </div>
-          ))}
+                <input
+                  value={
+                    settings.bankDetails[key]
+                  }
+                  onChange={(event) =>
+                    updateBankDetail(
+                      key,
+                      event.target.value,
+                    )
+                  }
+                  placeholder={placeholder}
+                  className={inputCls}
+                />
+              </div>
+            ),
+          )}
 
           <div className="space-y-1.5 md:col-span-2">
             <label className="text-sm font-medium text-gray-700">
@@ -554,7 +898,9 @@ export function PaymentSection() {
             </label>
 
             <textarea
-              value={settings.bankDetails.instructions}
+              value={
+                settings.bankDetails.instructions
+              }
               onChange={(event) =>
                 updateBankDetail(
                   "instructions",
@@ -565,11 +911,6 @@ export function PaymentSection() {
               className={`${inputCls} resize-none`}
               placeholder="Include the donor's name and email as the payment reference..."
             />
-
-            <p className="text-xs text-gray-500">
-              Account details and instructions remain admin-only while bank
-              transfer uses hosted checkout.
-            </p>
           </div>
         </div>
       </div>
@@ -587,9 +928,8 @@ export function PaymentSection() {
         </div>
 
         <p className="text-sm text-gray-500">
-          Enter your receiving wallet addresses below. These will be displayed
-          to donors who choose cryptocurrency as their payment method.
-          Leave blank to show "Coming Soon" for that currency.
+          Enter receiving wallet addresses. Leave a
+          currency blank to show "Coming Soon".
         </p>
 
         <div className="space-y-4">
@@ -611,7 +951,8 @@ export function PaymentSection() {
             },
             {
               key: "usdtErc20",
-              label: "USDT (ERC20 — Ethereum)",
+              label:
+                "USDT (ERC20 — Ethereum)",
               placeholder: "0x…",
             },
             {
@@ -619,25 +960,36 @@ export function PaymentSection() {
               label: "Solana (SOL)",
               placeholder: "…",
             },
-          ] as const).map(({ key, label, placeholder }) => (
-            <div
-              key={key}
-              className="space-y-1.5"
-            >
-              <label className="text-sm font-medium text-gray-700">
-                {label}
-              </label>
+          ] as const).map(
+            ({
+              key,
+              label,
+              placeholder,
+            }) => (
+              <div
+                key={key}
+                className="space-y-1.5"
+              >
+                <label className="text-sm font-medium text-gray-700">
+                  {label}
+                </label>
 
-              <input
-                value={settings.cryptoWallets[key]}
-                onChange={(event) =>
-                  updateWallet(key, event.target.value)
-                }
-                placeholder={`${placeholder} (leave blank for Coming Soon)`}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#0a1f44]/20 focus:border-[#0a1f44]"
-              />
-            </div>
-          ))}
+                <input
+                  value={
+                    settings.cryptoWallets[key]
+                  }
+                  onChange={(event) =>
+                    updateWallet(
+                      key,
+                      event.target.value,
+                    )
+                  }
+                  placeholder={`${placeholder} (leave blank for Coming Soon)`}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#0a1f44]/20 focus:border-[#0a1f44]"
+                />
+              </div>
+            ),
+          )}
         </div>
       </div>
 
