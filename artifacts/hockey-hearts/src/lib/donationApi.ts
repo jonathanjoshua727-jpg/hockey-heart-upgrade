@@ -1,6 +1,3 @@
-// Client for the donations backend (api-server mounted at /api).
-// The frontend never decides donation success — only the server-verified
-// result counts.
 import type { PaymentSettings } from "./contentStore";
 
 const API_BASE = "/api";
@@ -90,8 +87,6 @@ type ServerPaymentSettings = Omit<
 
 type DonorPaymentSettings = Pick<
   ServerPaymentSettings,
-  | "activeProvider"
-  | "paymentGateways"
   | "cardEnabled"
   | "bankTransferEnabled"
   | "bankTransferProviderName"
@@ -138,9 +133,12 @@ async function jsonFetch<T>(
   };
 
   if (!res.ok) {
-    // Keep technical 404 responses away from donors.
     if (res.status === 404) {
-      throw new Error(DONATION_UNAVAILABLE_MESSAGE);
+      throw new Error(
+        path.startsWith("/admin/")
+          ? `Admin API endpoint not found (${path}).`
+          : DONATION_UNAVAILABLE_MESSAGE,
+      );
     }
 
     throw new Error(body.error || `Request failed (${res.status})`);
@@ -152,31 +150,16 @@ async function jsonFetch<T>(
 export async function initializeDonation(
   input: InitializeInput,
 ): Promise<InitializeResult> {
-  /*
-   * Check the central public payment configuration before attempting
-   * to initialize a donation.
-   *
-   * If Admin has not activated a configured payment gateway, the donor
-   * receives a professional availability message instead of a technical
-   * API error.
-   */
   const settings = await fetchPublicPaymentSettings();
 
-  const activeProvider = settings.activeProvider;
-
-  if (!activeProvider) {
+  if (input.method === "card" && !settings.cardEnabled) {
     throw new Error(DONATION_UNAVAILABLE_MESSAGE);
   }
 
-  const activeGateway = settings.paymentGateways?.find(
-    (gateway) => gateway.id === activeProvider,
-  );
-
-  if (!activeGateway || !activeGateway.enabled) {
-    throw new Error(DONATION_UNAVAILABLE_MESSAGE);
-  }
-
-  if (!activeGateway.configured) {
+  if (
+    input.method === "bank_transfer" &&
+    !settings.bankTransferEnabled
+  ) {
     throw new Error(DONATION_UNAVAILABLE_MESSAGE);
   }
 
@@ -224,9 +207,6 @@ export async function fetchPublicPaymentSettings(): Promise<PaymentSettings> {
 
   return withLegacyCompatibility({
     ...settings,
-
-    // Bank-account fields are admin-only and are never returned
-    // by the public endpoint.
     bankDetails: getLocalBankDetails(),
   });
 }
