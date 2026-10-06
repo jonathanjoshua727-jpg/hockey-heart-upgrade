@@ -28,12 +28,16 @@ async function sha256(text: string): Promise<string> {
   const msgBuffer = new TextEncoder().encode(text);
   const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+
+  return hashArray
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 function randomToken(): string {
   const arr = new Uint8Array(32);
   crypto.getRandomValues(arr);
+
   return Array.from(arr)
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
@@ -55,22 +59,19 @@ export async function setupAdmin(
     passwordHash,
   };
 
-  // Keep the local credential for the existing admin UI.
-  localStorage.setItem(KEYS.credentials, JSON.stringify(creds));
-
-  // Create/update the verified server-side admin account.
+  // Store the local credential only after the server account
+  // has been created successfully.
   try {
     await adminServerLogin(normalizedUsername, password);
   } catch (error) {
-    // Do not leave a local admin account behind if server setup failed.
-    localStorage.removeItem(KEYS.credentials);
-
     throw new Error(
       error instanceof Error
         ? error.message
         : "Unable to create the server admin account.",
     );
   }
+
+  localStorage.setItem(KEYS.credentials, JSON.stringify(creds));
 }
 
 export async function loginAdmin(
@@ -110,8 +111,9 @@ export async function loginAdmin(
     };
   }
 
+  // The backend must authenticate successfully before creating
+  // the local admin session.
   try {
-    // Authenticate against the backend first.
     await adminServerLogin(creds.username, password);
   } catch (error) {
     return {
@@ -208,7 +210,6 @@ export async function changeAdminPassword(
   try {
     await adminUpdateServerCredentials(
       creds.username,
-      currentPassword,
       newPassword,
     );
   } catch (error) {
@@ -221,11 +222,11 @@ export async function changeAdminPassword(
     };
   }
 
-  const newPasswordHash = await sha256(newPassword);
+  const newHash = await sha256(newPassword);
 
   const updatedCreds: Credentials = {
     username: creds.username,
-    passwordHash: newPasswordHash,
+    passwordHash: newHash,
   };
 
   localStorage.setItem(
@@ -236,7 +237,16 @@ export async function changeAdminPassword(
   return { ok: true };
 }
 
-export function getAdminUsername(): string | null {
-  const session = getAdminSession();
-  return session?.username ?? null;
+export function getAdminUsername(): string {
+  try {
+    const raw = localStorage.getItem(KEYS.credentials);
+
+    if (!raw) {
+      return "Admin";
+    }
+
+    return (JSON.parse(raw) as Credentials).username;
+  } catch {
+    return "Admin";
+  }
 }
