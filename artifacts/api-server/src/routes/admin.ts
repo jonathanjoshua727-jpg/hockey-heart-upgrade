@@ -89,6 +89,44 @@ router.post("/admin/login", async (req, res) => {
   res.json({ token: issueAdminToken(username) });
 });
 
+// ── Temporary admin recovery ─────────────────────────────────────────────
+router.post("/admin/recover", async (req, res) => {
+  const recoverySecret = process.env.HHI_ADMIN_RECOVERY_SECRET;
+
+  if (!recoverySecret || req.body?.recoverySecret !== recoverySecret) {
+    res.status(401).json({ error: "Unauthorized." });
+    return;
+  }
+
+  const parsed = z
+    .object({
+      recoverySecret: z.string().min(1),
+      username: z.string().min(3).max(100),
+      password: z.string().min(8).max(200),
+    })
+    .safeParse(req.body);
+
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid recovery request." });
+    return;
+  }
+
+  const username = parsed.data.username.toLowerCase().trim();
+  const passwordHash = hashPassword(parsed.data.password);
+  const existing = await db.select().from(adminCredentialsTable).limit(1);
+
+  if (existing.length === 0) {
+    await db.insert(adminCredentialsTable).values({ username, passwordHash });
+  } else {
+    await db
+      .update(adminCredentialsTable)
+      .set({ username, passwordHash })
+      .where(eq(adminCredentialsTable.id, existing[0].id));
+  }
+
+  res.json({ ok: true });
+});
+
 // ── Update credentials (requires valid session) ───────────────────────────
 router.post("/admin/credentials", requireAdmin, async (req, res) => {
   const parsed = z
