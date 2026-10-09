@@ -35,6 +35,23 @@ test("accepts an explicit USD currency and trims donor name and email", () => {
     email: "  jane.doe@example.com  ",
   });
 
+  test("preserves the $50 USD minimum", () => {
+    const belowMinimum = initializeSchema.safeParse({
+      ...validDonation,
+      amount: 49.99,
+    });
+    const atMinimum = initializeSchema.safeParse(validDonation);
+
+    assert.equal(belowMinimum.success, false);
+    if (!belowMinimum.success) {
+      assert.equal(
+        getInitializeValidationMessage(belowMinimum.error),
+        "Minimum donation is $50 USD.",
+      );
+    }
+    assert.equal(atMinimum.success, true);
+  });
+
   assert.equal(result.success, true);
   if (result.success) {
     assert.equal(result.data.donorName, "Jane Doe");

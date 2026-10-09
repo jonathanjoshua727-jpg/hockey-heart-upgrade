@@ -5,6 +5,7 @@ import { db, donationsTable, type Donation } from "@workspace/db";
 import { and, eq, isNull } from "drizzle-orm";
 import {
   flutterwaveCreatePayment,
+  isFlutterwaveConfigured,
   flutterwaveVerifyByTxRef,
 } from "../lib/flutterwave";
 import { sendDonationConfirmation } from "../lib/mailer";
@@ -16,8 +17,6 @@ import {
 } from "./donationValidation";
 
 const router: IRouter = Router();
-
-const MIN_AMOUNT_USD = 50;
 
 /**
  * Production website origin.
@@ -137,13 +136,6 @@ router.post(
 
     const input = parsed.data;
 
-    if (input.amount < MIN_AMOUNT_USD) {
-      res.status(400).json({
-        error: "Minimum donation is $50 USD.",
-      });
-      return;
-    }
-
     const paymentSettings = await getPaymentSettings();
 
     const methodEnabled =
@@ -157,6 +149,14 @@ router.post(
           input.method === "card"
             ? "Card donations are temporarily unavailable."
             : "Bank transfer donations are temporarily unavailable.",
+      });
+      return;
+    }
+
+    if (!isFlutterwaveConfigured()) {
+      res.status(503).json({
+        error:
+          "Online payment processing is not configured yet. Please contact Hockey Heart Initiative to complete your donation.",
       });
       return;
     }
@@ -189,53 +189,89 @@ router.post(
     const redirectUrl =
       `${getCanonicalOrigin()}${input.redirectPath ?? "/donate"}`;
 
-    const payment = await flutterwaveCreatePayment({
-      txRef: reference,
-      amountUsd: input.amount,
-      email: input.email.toLowerCase(),
-      name: input.anonymous
-        ? "Anonymous Donor"
-        : input.donorName,
-      redirectUrl,
-      paymentOptions:
-        input.method === "bank_transfer"
-          ? "banktransfer, card"
-          : "card",
-    });
+    let payment: Awaited<ReturnType<typeof flutterwaveCreatePayment>>;
+    try {
+      payment = await flutterwaveCreatePayment({
+        txRef: reference,
+        amountUsd: input.amount,
+        email: input.email.toLowerCase(),
+        name: input.anonymous
+          ? "Anonymous Donor"
+          : input.donorName,
+        redirectUrl,
+        paymentOptions:
+          input.method === "bank_transfer"
+            ? "banktransfer, card"
+            : "card",
+      });
+    } catch (error) {
+      logger.error(
+        { reference, error },
+        "Payment provider request failed",
+      );
+      payment = {
+        ok: false,
+        failure: "provider",
+        error: "Payment provider request failed.",
+      };
+    }
 
     if (!payment.ok || !payment.link) {
       logger.error(
         {
           reference,
-          error: payment.error,
+          status: payment.status,
+          failure: payment.failure,
         },
         "Payment initialization failed",
       );
 
-      await db
-        .update(donationsTable)
-        .set({
-          status: "failed",
-          gatewayResponse:
-            "Payment initialization failed",
-          updatedAt: new Date(),
-        })
-        .where(
-          and(
-            eq(
-              donationsTable.reference,
-              reference,
-            ),
-            eq(
-              donationsTable.status,
-              "pending",
-            ),
-          ),
-        );
+      if (payment.failure === "unknown") {
+        res.status(502).json({
+          error:
+            `We couldn't confirm whether checkout started. Keep reference ${reference} and contact Hockey Heart Initiative before retrying.`,
+        });
+        return;
+      }
 
-      res.status(502).json({
+      try {
+        await db
+          .update(donationsTable)
+          .set({
+            status: "failed",
+            gatewayResponse:
+              "Payment initialization failed",
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(
+                donationsTable.reference,
+                reference,
+              ),
+              eq(
+                donationsTable.status,
+                "pending",
+              ),
+            ),
+          );
+      } catch (error) {
+        logger.error(
+          { reference, error },
+          "Could not mark failed payment initialization",
+        );
+        res.status(500).json({
+          error:
+            `Payment setup failed, but the donation record could not be updated. Contact Hockey Heart Initiative with reference ${reference}.`,
+        });
+        return;
+      }
+
+      res.status(payment.failure === "configuration" ? 503 : 502).json({
         error:
-          "We couldn't start your donation. Please try again in a moment.",
+          payment.failure === "configuration"
+            ? "Payment processing is not configured correctly. Please contact Hockey Heart Initiative."
+            : "The payment provider could not start your donation. Please try again later.",
       });
 
       return;
@@ -280,14 +316,34 @@ export async function verifyAndSettle(
   }
 
   if (
-    record.status === "successful" ||
-    record.status === "refunded"
+    record.status === "successful" &&
+    record.verifiedAt
   ) {
     return {
       status: 200,
       body: {
         verified: true,
         donation: publicDonation(record),
+      },
+    };
+  }
+
+  if (record.status === "refunded") {
+    return {
+      status: 402,
+      body: {
+        verified: false,
+        error: "This donation has been refunded.",
+      },
+    };
+  }
+
+  if (record.status === "successful") {
+    return {
+      status: 409,
+      body: {
+        verified: false,
+        error: "This donation requires server-side verification.",
       },
     };
   }
@@ -321,6 +377,18 @@ export async function verifyAndSettle(
   }
 
   const data = result.data;
+  if (data.tx_ref !== reference) {
+    logger.warn({ reference }, "Flutterwave returned a mismatched donation reference");
+    return {
+      status: 502,
+      body: {
+        verified: false,
+        error:
+          "We couldn't verify your donation. No successful donation was recorded. Please contact Hockey Heart Initiative.",
+      },
+    };
+  }
+
   const paidCents = Math.round(
     data.amount * 100,
   );
@@ -420,10 +488,7 @@ export async function verifyAndSettle(
       )[0] ??
       record;
 
-    if (
-      donation.status !== "successful" &&
-      donation.status !== "refunded"
-    ) {
+    if (donation.status !== "successful" || !donation.verifiedAt) {
       return {
         status: 409,
         body: {

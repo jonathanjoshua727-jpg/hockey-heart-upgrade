@@ -70,7 +70,7 @@ router.post("/admin/login", async (req, res) => {
         .insert(adminCredentialsTable)
         .values({ username, passwordHash: hashPassword(parsed.data.password) });
       logger.warn({ username }, "Bootstrapped server-side admin account (first login)");
-      res.json({ token: issueAdminToken(username) });
+      res.json(issueAdminToken(username));
       return;
     } catch {
       // Someone else bootstrapped concurrently — fall through to verification.
@@ -86,7 +86,7 @@ router.post("/admin/login", async (req, res) => {
     res.status(401).json({ error: "Invalid credentials." });
     return;
   }
-  res.json({ token: issueAdminToken(username) });
+  res.json(issueAdminToken(username));
 });
 
 // ── Temporary admin recovery ─────────────────────────────────────────────
@@ -150,7 +150,7 @@ router.post("/admin/credentials", requireAdmin, async (req, res) => {
       .set({ username, passwordHash })
       .where(eq(adminCredentialsTable.id, existing[0].id));
   }
-  res.json({ ok: true, token: issueAdminToken(username) });
+  res.json({ ok: true, ...issueAdminToken(username) });
 });
 
 // ── List donations with search/filter ─────────────────────────────────────
@@ -209,8 +209,8 @@ router.get("/admin/donations", requireAdmin, async (req, res) => {
 router.get("/admin/donations/stats", requireAdmin, async (_req, res) => {
   const [totals] = await db
     .select({
-      totalRaisedCents: sql<number>`coalesce(sum(case when ${donationsTable.status} = 'successful' then coalesce(${donationsTable.paidAmountCents}, ${donationsTable.amountCents}) else 0 end), 0)`,
-      successfulCount: sql<number>`count(*) filter (where ${donationsTable.status} = 'successful')`,
+      totalRaisedCents: sql<number>`coalesce(sum(case when ${donationsTable.status} = 'successful' and ${donationsTable.verifiedAt} is not null then coalesce(${donationsTable.paidAmountCents}, ${donationsTable.amountCents}) else 0 end), 0)`,
+      successfulCount: sql<number>`count(*) filter (where ${donationsTable.status} = 'successful' and ${donationsTable.verifiedAt} is not null)`,
       pendingCount: sql<number>`count(*) filter (where ${donationsTable.status} = 'pending')`,
       failedCount: sql<number>`count(*) filter (where ${donationsTable.status} = 'failed')`,
       cancelledCount: sql<number>`count(*) filter (where ${donationsTable.status} = 'cancelled')`,
@@ -226,7 +226,7 @@ router.get("/admin/donations/stats", requireAdmin, async (_req, res) => {
       count: sql<number>`count(*)`,
     })
     .from(donationsTable)
-    .where(eq(donationsTable.status, "successful"))
+    .where(and(eq(donationsTable.status, "successful"), sql`${donationsTable.verifiedAt} is not null`))
     .groupBy(donationsTable.causeId, donationsTable.causeLabel)
     .orderBy(desc(sql`sum(coalesce(${donationsTable.paidAmountCents}, ${donationsTable.amountCents}))`));
 
@@ -237,7 +237,7 @@ router.get("/admin/donations/stats", requireAdmin, async (_req, res) => {
       count: sql<number>`count(*)`,
     })
     .from(donationsTable)
-    .where(eq(donationsTable.status, "successful"))
+    .where(and(eq(donationsTable.status, "successful"), sql`${donationsTable.verifiedAt} is not null`))
     .groupBy(sql`coalesce(${donationsTable.channel}, ${donationsTable.method})`);
 
   const byCurrency = await db
@@ -247,7 +247,7 @@ router.get("/admin/donations/stats", requireAdmin, async (_req, res) => {
       count: sql<number>`count(*)`,
     })
     .from(donationsTable)
-    .where(eq(donationsTable.status, "successful"))
+    .where(and(eq(donationsTable.status, "successful"), sql`${donationsTable.verifiedAt} is not null`))
     .groupBy(donationsTable.currency);
 
   res.json({

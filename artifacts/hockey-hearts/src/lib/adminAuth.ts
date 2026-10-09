@@ -4,18 +4,17 @@ import {
   adminServerLogin,
   adminUpdateServerCredentials,
   clearAdminApiToken,
+  getAdminApiToken,
 } from "./donationApi";
 const KEYS = {
   credentials: "hhi_admin_credentials",
   session: "hhi_admin_session",
 };
-const SESSION_DURATION_MS = 8 * 60 * 60 * 1000; // 8 hours
 interface Credentials {
   username: string;
   passwordHash: string;
 }
 interface Session {
-  token: string;
   username: string;
   expiresAt: number;
 }
@@ -24,13 +23,6 @@ async function sha256(text: string): Promise<string> {
   const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-function randomToken(): string {
-  const arr = new Uint8Array(32);
-  crypto.getRandomValues(arr);
-  return Array.from(arr)
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 }
@@ -50,7 +42,11 @@ export async function setupAdmin(
   // Store the local credential only after the server account
   // has been created successfully.
   try {
-    await adminServerLogin(normalizedUsername, password);
+    const expiresAt = await adminServerLogin(normalizedUsername, password);
+    sessionStorage.setItem(
+      KEYS.session,
+      JSON.stringify({ username: normalizedUsername, expiresAt }),
+    );
   } catch (error) {
     throw new Error(
       error instanceof Error
@@ -94,7 +90,12 @@ export async function loginAdmin(
   // The backend must authenticate successfully before creating
   // the local admin session.
   try {
-    await adminServerLogin(creds.username, password);
+    const expiresAt = await adminServerLogin(creds.username, password);
+    const session: Session = {
+      username: creds.username,
+      expiresAt,
+    };
+    sessionStorage.setItem(KEYS.session, JSON.stringify(session));
   } catch (error) {
     return {
       ok: false,
@@ -104,12 +105,6 @@ export async function loginAdmin(
           : "Unable to authenticate with the server.",
     };
   }
-  const session: Session = {
-    token: randomToken(),
-    username: creds.username,
-    expiresAt: Date.now() + SESSION_DURATION_MS,
-  };
-  sessionStorage.setItem(KEYS.session, JSON.stringify(session));
   return { ok: true };
 }
 export function getAdminSession(): Session | null {
@@ -119,7 +114,13 @@ export function getAdminSession(): Session | null {
       return null;
     }
     const session: Session = JSON.parse(raw);
-    if (Date.now() > session.expiresAt) {
+    if (
+      typeof session.username !== "string" ||
+      typeof session.expiresAt !== "number" ||
+      !Number.isFinite(session.expiresAt) ||
+      Date.now() >= session.expiresAt ||
+      !getAdminApiToken()
+    ) {
       sessionStorage.removeItem(KEYS.session);
       clearAdminApiToken();
       return null;
@@ -170,10 +171,20 @@ export async function changeAdminPassword(
     };
   }
   try {
-    await adminUpdateServerCredentials(
+    const expiresAt = await adminUpdateServerCredentials(
       creds.username,
       newPassword,
     );
+    if (!expiresAt) {
+      throw new Error("Unable to update the server credentials.");
+    }
+    const session = getAdminSession();
+    if (session) {
+      sessionStorage.setItem(
+        KEYS.session,
+        JSON.stringify({ ...session, expiresAt }),
+      );
+    }
   } catch (error) {
     return {
       ok: false,

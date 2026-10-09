@@ -1,7 +1,7 @@
 import { z } from "zod/v4";
 
 export const initializeSchema = z.object({
-  amount: z.number().positive().max(1_000_000),
+  amount: z.number().min(50).max(1_000_000),
   currency: z.literal("USD").default("USD"),
   causeId: z.string().trim().min(1).max(100),
   causeLabel: z.string().trim().min(1).max(200),
@@ -18,7 +18,11 @@ export const initializeSchema = z.object({
 });
 
 export function getInitializeValidationMessage(error: z.ZodError): string {
-  const field = String(error.issues[0]?.path[0] ?? "");
+  const issue = error.issues[0];
+  const field = String(issue?.path[0] ?? "");
+  if (field === "amount" && issue?.code === "too_small") {
+    return "Minimum donation is $50 USD.";
+  }
   const messages: Record<string, string> = {
     amount: "Please enter a valid donation amount.",
     currency: "Donations can only be processed in USD.",

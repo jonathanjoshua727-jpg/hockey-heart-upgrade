@@ -13,11 +13,15 @@ function sign(payload: string): string {
   return crypto.createHmac("sha256", secret()).update(payload).digest("hex");
 }
 
-export function issueAdminToken(username: string): string {
+export function issueAdminToken(username: string): {
+  token: string;
+  expiresAt: number;
+} {
+  const expiresAt = Date.now() + TOKEN_TTL_MS;
   const payload = Buffer.from(
-    JSON.stringify({ u: username, exp: Date.now() + TOKEN_TTL_MS }),
+    JSON.stringify({ u: username, exp: expiresAt }),
   ).toString("base64url");
-  return `${payload}.${sign(payload)}`;
+  return { token: `${payload}.${sign(payload)}`, expiresAt };
 }
 
 export function verifyAdminToken(token: string): { username: string } | null {
@@ -42,7 +46,13 @@ export function verifyAdminToken(token: string): { username: string } | null {
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   const header = req.headers.authorization ?? "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : "";
-  const session = token ? verifyAdminToken(token) : null;
+  let session: { username: string } | null = null;
+  try {
+    session = token ? verifyAdminToken(token) : null;
+  } catch (error) {
+    next(error);
+    return;
+  }
   if (!session) {
     res.status(401).json({ error: "Unauthorized" });
     return;

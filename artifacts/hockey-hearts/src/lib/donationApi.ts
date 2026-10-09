@@ -141,7 +141,11 @@ async function jsonFetch<T>(
       );
     }
 
-    throw new Error(body.error || `Request failed (${res.status})`);
+    throw new Error(
+      body.error
+        ? `${body.error} (HTTP ${res.status})`
+        : `Request failed (HTTP ${res.status})`,
+    );
   }
 
   return body;
@@ -193,6 +197,14 @@ export async function verifyDonation(
     error?: string;
   };
 
+  if (!res.ok) {
+    return {
+      verified: false,
+      error:
+        body.error || `Donation verification failed (HTTP ${res.status}).`,
+    };
+  }
+
   return {
     verified: !!body.verified,
     donation: body.donation,
@@ -237,38 +249,46 @@ export function clearAdminApiToken(): void {
 export async function adminServerLogin(
   username: string,
   password: string,
-): Promise<boolean> {
+): Promise<number> {
+  clearAdminApiToken();
   try {
-    const { token } = await jsonFetch<{ token: string }>(
-      "/admin/login",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          username,
-          password,
-        }),
-      },
-    );
-
-    sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
-    return true;
-  } catch {
-    return false;
+    const result = await jsonFetch<{
+      token: string;
+      expiresAt: number;
+    }>("/admin/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    });
+    if (
+      typeof result.token !== "string" ||
+      !result.token ||
+      typeof result.expiresAt !== "number" ||
+      !Number.isFinite(result.expiresAt) ||
+      result.expiresAt <= Date.now()
+    ) {
+      throw new Error("The server returned an invalid admin session.");
+    }
+    sessionStorage.setItem(ADMIN_TOKEN_KEY, result.token);
+    return result.expiresAt;
+  } catch (error) {
+    clearAdminApiToken();
+    throw error;
   }
 }
 
 export async function adminUpdateServerCredentials(
   username: string,
   password: string,
-): Promise<boolean> {
+): Promise<number | false> {
   const token = getAdminApiToken();
 
   if (!token) return false;
 
   try {
-    const { token: newToken } = await jsonFetch<{
+    const result = await jsonFetch<{
       ok: boolean;
       token: string;
+      expiresAt: number;
     }>("/admin/credentials", {
       method: "POST",
       headers: {
@@ -280,8 +300,18 @@ export async function adminUpdateServerCredentials(
       }),
     });
 
-    sessionStorage.setItem(ADMIN_TOKEN_KEY, newToken);
-    return true;
+    if (
+      typeof result.token !== "string" ||
+      !result.token ||
+      typeof result.expiresAt !== "number" ||
+      !Number.isFinite(result.expiresAt) ||
+      result.expiresAt <= Date.now()
+    ) {
+      return false;
+    }
+
+    sessionStorage.setItem(ADMIN_TOKEN_KEY, result.token);
+    return result.expiresAt;
   } catch {
     return false;
   }

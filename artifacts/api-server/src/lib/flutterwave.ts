@@ -4,8 +4,12 @@ const FLW_BASE = "https://api.flutterwave.com/v3";
 
 export function getFlutterwaveSecret(): string {
   const key = process.env.FLUTTERWAVE_SECRET_KEY;
-  if (!key) throw new Error("FLUTTERWAVE_SECRET_KEY is not configured");
+  if (!key?.trim()) throw new Error("FLUTTERWAVE_SECRET_KEY is not configured");
   return key;
+}
+
+export function isFlutterwaveConfigured(): boolean {
+  return Boolean(process.env.FLUTTERWAVE_SECRET_KEY?.trim());
 }
 
 /** Secret hash the admin sets in the Flutterwave dashboard for webhooks. */
@@ -27,8 +31,16 @@ export async function flutterwaveCreatePayment(input: {
   name: string;
   redirectUrl: string;
   paymentOptions: string;
-}): Promise<{ ok: boolean; link?: string; error?: string }> {
-  const res = await fetch(`${FLW_BASE}/payments`, {
+}): Promise<{
+  ok: boolean;
+  link?: string;
+  error?: string;
+  failure?: "configuration" | "provider" | "unknown";
+  status?: number;
+}> {
+  let res: Response;
+  try {
+    res = await fetch(`${FLW_BASE}/payments`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -46,10 +58,27 @@ export async function flutterwaveCreatePayment(input: {
         description: "Secure donation checkout",
       },
     }),
-  });
+    });
+  } catch {
+    return {
+      ok: false,
+      failure: "unknown",
+      error: "Payment initialization outcome is unknown.",
+    };
+  }
   const body = (await res.json().catch(() => null)) as FlwEnvelope<{ link?: string }> | null;
   if (!res.ok || body?.status !== "success" || !body.data?.link) {
-    return { ok: false, error: body?.message ?? `Payment initialization failed (${res.status})` };
+    return {
+      ok: false,
+      failure:
+        res.status === 401 || res.status === 403
+          ? "configuration"
+          : res.ok || res.status >= 500 || res.status === 408 || res.status === 429
+            ? "unknown"
+            : "provider",
+      status: res.status,
+      error: body?.message ?? `Payment initialization failed (${res.status})`,
+    };
   }
   return { ok: true, link: body.data.link };
 }

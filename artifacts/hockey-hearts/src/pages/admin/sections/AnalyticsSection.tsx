@@ -1,6 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
 import {
-  getTransactions,
   getCampaigns,
   getActivityLog,
 } from "@/lib/contentStore";
@@ -128,19 +127,6 @@ export function AnalyticsSection() {
 
   const [statsError, setStatsError] =
     useState<string | null>(null);
-
-  const transactions = useMemo(() => {
-    try {
-      const value = getTransactions();
-      return Array.isArray(value) ? value : [];
-    } catch (error) {
-      console.error(
-        "Analytics: failed to load transactions",
-        error,
-      );
-      return [];
-    }
-  }, []);
 
   const campaigns = useMemo(() => {
     try {
@@ -288,7 +274,7 @@ export function AnalyticsSection() {
         setStats(EMPTY_DONATION_STATS);
 
         setStatsError(
-          "Verified donation statistics could not be loaded. Other analytics remain available.",
+          `Verified donation statistics could not be loaded (${error instanceof Error ? error.message : "unknown server error"}). Other analytics remain available.`,
         );
       } finally {
         if (mounted) {
@@ -304,22 +290,6 @@ export function AnalyticsSection() {
     };
   }, []);
 
-  const localCrypto = transactions.filter(
-    (transaction) =>
-      typeof transaction?.method === "string" &&
-      transaction.method.startsWith("crypto_"),
-  );
-
-  const completed = localCrypto.filter(
-    (transaction) =>
-      transaction?.status === "completed",
-  );
-
-  const pending = localCrypto.filter(
-    (transaction) =>
-      transaction?.status === "pending",
-  );
-
   const successfulOnlineDonations = safeNumber(
     stats?.counts?.successful,
   );
@@ -328,16 +298,8 @@ export function AnalyticsSection() {
     stats?.totalRaised,
   );
 
-  const completedCount =
-    completed.length +
-    successfulOnlineDonations;
-
-  const totalRaised =
-    completed.reduce(
-      (sum, transaction) =>
-        sum + safeNumber(transaction?.amount),
-      0,
-    ) + verifiedRaised;
+  const completedCount = successfulOnlineDonations;
+  const totalRaised = verifiedRaised;
 
   const avgDonation =
     completedCount > 0
@@ -366,12 +328,6 @@ export function AnalyticsSection() {
 
   const methodMap: Record<string, number> = {};
 
-  for (const transaction of completed) {
-    methodMap["Cryptocurrency"] =
-      (methodMap["Cryptocurrency"] ?? 0) +
-      safeNumber(transaction?.amount);
-  }
-
   for (const method of stats?.byMethod ?? []) {
     const methodName =
       typeof method?.method === "string"
@@ -392,18 +348,6 @@ export function AnalyticsSection() {
 
   const causeMap: Record<string, number> = {};
 
-  for (const transaction of completed) {
-    const cause =
-      typeof transaction?.cause === "string" &&
-      transaction.cause.trim()
-        ? transaction.cause
-        : "Unspecified";
-
-    causeMap[cause] =
-      (causeMap[cause] ?? 0) +
-      safeNumber(transaction?.amount);
-  }
-
   for (const cause of stats?.byCause ?? []) {
     const label =
       typeof cause?.causeLabel === "string" &&
@@ -417,18 +361,6 @@ export function AnalyticsSection() {
   }
 
   const currencyMap: Record<string, number> = {};
-
-  for (const transaction of completed) {
-    const currency =
-      typeof transaction?.currency === "string" &&
-      transaction.currency.trim()
-        ? transaction.currency
-        : "USD";
-
-    currencyMap[currency] =
-      (currencyMap[currency] ?? 0) +
-      safeNumber(transaction?.amount);
-  }
 
   for (const currency of stats?.byCurrency ?? []) {
     const code =
@@ -848,19 +780,31 @@ export function AnalyticsSection() {
           {[
             {
               label: "Total Raised (Confirmed)",
-              value: `$${totalRaised.toLocaleString()}`,
+              value: statsLoading
+                ? "Loading…"
+                : statsError
+                  ? "Unavailable"
+                  : `$${totalRaised.toLocaleString()}`,
               color: "text-emerald-600",
               bg: "bg-emerald-50",
             },
             {
               label: "Pending Donations",
-              value: pending.length,
+              value: statsLoading
+                ? "Loading…"
+                : statsError
+                  ? "Unavailable"
+                  : stats.counts.pending,
               color: "text-amber-600",
               bg: "bg-amber-50",
             },
             {
               label: "Average Donation",
-              value: `$${avgDonation.toLocaleString()}`,
+              value: statsLoading
+                ? "Loading…"
+                : statsError
+                  ? "Unavailable"
+                  : `$${avgDonation.toLocaleString()}`,
               color: "text-blue-600",
               bg: "bg-blue-50",
             },
@@ -897,9 +841,13 @@ export function AnalyticsSection() {
             Donations by Method
           </h3>
 
-          {Object.keys(methodMap).length === 0 ? (
+          {statsLoading || statsError || Object.keys(methodMap).length === 0 ? (
             <p className="text-gray-400 text-sm italic">
-              No confirmed donations yet.
+              {statsLoading
+                ? "Loading verified donation breakdown…"
+                : statsError
+                  ? "Verified donation breakdown is unavailable."
+                  : "No confirmed donations yet."}
             </p>
           ) : (
             <div className="space-y-3">
@@ -942,9 +890,13 @@ export function AnalyticsSection() {
             Donations by Program
           </h3>
 
-          {Object.keys(causeMap).length === 0 ? (
+          {statsLoading || statsError || Object.keys(causeMap).length === 0 ? (
             <p className="text-gray-400 text-sm italic">
-              No confirmed donations yet.
+              {statsLoading
+                ? "Loading verified donation breakdown…"
+                : statsError
+                  ? "Verified donation breakdown is unavailable."
+                  : "No confirmed donations yet."}
             </p>
           ) : (
             <div className="space-y-3">
@@ -987,9 +939,13 @@ export function AnalyticsSection() {
             Donations by Currency
           </h3>
 
-          {Object.keys(currencyMap).length === 0 ? (
+          {statsLoading || statsError || Object.keys(currencyMap).length === 0 ? (
             <p className="text-gray-400 text-sm italic">
-              No confirmed donations yet.
+              {statsLoading
+                ? "Loading verified donation breakdown…"
+                : statsError
+                  ? "Verified donation breakdown is unavailable."
+                  : "No confirmed donations yet."}
             </p>
           ) : (
             <div className="space-y-3">

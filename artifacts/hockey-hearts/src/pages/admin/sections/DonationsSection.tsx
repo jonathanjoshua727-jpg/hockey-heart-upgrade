@@ -54,6 +54,7 @@ interface Row {
   cause: string;
   method: string;
   date: string;
+  verified: boolean;
 }
 
 function serverStatusToRow(s: ServerDonation["status"]): Transaction["status"] {
@@ -86,11 +87,14 @@ export function DonationsSection() {
         cause: t.cause,
         method: t.method,
         date: t.date,
+        verified: false,
       }));
 
     let server: Row[] = [];
+    let serverAvailable = false;
     try {
       const { donations } = await fetchAdminDonations();
+      serverAvailable = true;
       server = donations.map((d) => ({
         key: `server-${d.id}`,
         source: "server" as const,
@@ -102,6 +106,7 @@ export function DonationsSection() {
         cause: d.causeLabel,
         method: d.method,
         date: d.date,
+        verified: d.status === "successful" && !!d.verifiedAt,
       }));
       setApiError("");
     } catch (e) {
@@ -113,7 +118,7 @@ export function DonationsSection() {
     }
 
     setRows(
-      [...server, ...local].sort(
+      (serverAvailable ? [...server, ...local] : []).sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
       ),
     );
@@ -122,11 +127,13 @@ export function DonationsSection() {
   useEffect(() => { refresh(); }, [refresh]);
 
   const totalRaised = rows
-    .filter((t) => t.status === "completed" && t.source === "server")
+    .filter((t) => t.verified)
     .reduce((sum, t) => sum + t.amount, 0);
 
   const pending = rows.filter((t) => t.status === "pending").length;
-  const completed = rows.filter((t) => t.status === "completed").length;
+  const completed = rows.filter(
+    (t) => t.verified,
+  ).length;
 
   const filtered = rows
     .filter((t) => filter === "all" || t.status === filter)
@@ -266,7 +273,11 @@ export function DonationsSection() {
       {/* Table */}
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-gray-400 bg-white border border-gray-200 rounded-2xl">
-          {rows.length === 0 ? "No donations recorded yet." : "No results match your filter."}
+          {apiError
+            ? "Server donation records are unavailable; local records are not shown as a substitute."
+            : rows.length === 0
+              ? "No donations recorded yet."
+              : "No results match your filter."}
         </div>
       ) : (
         <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
@@ -291,7 +302,7 @@ export function DonationsSection() {
                       <td className="px-5 py-4">
                         <p className="font-medium text-gray-900 flex items-center gap-1.5">
                           {tx.donorName}
-                          {tx.source === "server" && (
+                          {tx.verified && (
                             <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" aria-label="Verified by payment backend" />
                           )}
                         </p>
