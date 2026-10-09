@@ -10,6 +10,10 @@ import {
 import { sendDonationConfirmation } from "../lib/mailer";
 import { logger } from "../lib/logger";
 import { getPaymentSettings } from "../lib/paymentSettings";
+import {
+  getInitializeValidationMessage,
+  initializeSchema,
+} from "./donationValidation";
 
 const router: IRouter = Router();
 
@@ -82,23 +86,6 @@ function makeRateLimiter(maxHits: number, windowMs: number) {
 const initializeLimiter = makeRateLimiter(15, 10 * 60 * 1000);
 const verifyLimiter = makeRateLimiter(60, 10 * 60 * 1000);
 
-const initializeSchema = z.object({
-  amount: z.number().positive().max(1_000_000),
-  currency: z.literal("USD"),
-  causeId: z.string().min(1).max(100),
-  causeLabel: z.string().min(1).max(200),
-  donorName: z.string().min(1).max(200),
-  email: z.string().email().max(320),
-  anonymous: z.boolean().default(false),
-  message: z.string().max(2000).optional(),
-  method: z.enum(["card", "bank_transfer"]),
-  redirectPath: z
-    .string()
-    .max(300)
-    .regex(/^\/(?!\/)/)
-    .optional(),
-});
-
 /**
  * Always return the real production website.
  *
@@ -143,7 +130,7 @@ router.post(
 
     if (!parsed.success) {
       res.status(400).json({
-        error: "Invalid donation details.",
+        error: getInitializeValidationMessage(parsed.error),
       });
       return;
     }
