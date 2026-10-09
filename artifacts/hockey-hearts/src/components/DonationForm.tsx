@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -110,6 +110,7 @@ function safeTrackClick(
   }
 }
 export function DonationForm() {
+  const donationInitializationInFlight = useRef(false);
   const [settings, setSettings] = useState<PaymentSettings>(
     getSafeInitialSettings,
   );
@@ -327,11 +328,14 @@ export function DonationForm() {
   async function handleGatewayDonation(
     payMethod: "bank_transfer" | "card",
   ) {
+    if (donationInitializationInFlight.current) return;
+
     const validationError = validate();
     if (validationError) {
       setError(validationError);
       return;
     }
+    donationInitializationInFlight.current = true;
     const methodLabel =
       payMethod === "bank_transfer"
         ? "Bank Transfer"
@@ -375,6 +379,7 @@ export function DonationForm() {
       );
       window.location.assign(init.paymentLink);
     } catch (e) {
+      donationInitializationInFlight.current = false;
       setLoading(false);
       setError(
         e instanceof Error && e.message
