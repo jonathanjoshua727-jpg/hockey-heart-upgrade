@@ -176,7 +176,14 @@ export async function initializeDonation(
   return jsonFetch<InitializeResult>("/donations/initialize", {
     method: "POST",
     body: JSON.stringify({
-      ...input,
+      causeId: input.causeId,
+      causeLabel: input.causeLabel,
+      donorName: input.donorName,
+      email: input.email,
+      anonymous: input.anonymous,
+      message: input.message,
+      method: input.method,
+      redirectPath: input.redirectPath,
       amount: amountUsd,
       currency: "USD",
     }),
@@ -264,6 +271,9 @@ export async function adminServerLogin(
       expiresAt: number;
     }>("/admin/login", {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({ username, password }),
     });
     if (
