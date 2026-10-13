@@ -20,6 +20,13 @@ import {
 } from "@/lib/donationApi";
 const PRESET_AMOUNTS = [50, 100, 250, 500];
 const PENDING_KEY = "hhi_pending_donation";
+function parseDonationAmount(value: string): number {
+  const trimmed = value.trim();
+  if (!/^(?:\d+(?:\.\d{0,2})?|\.\d{1,2})$/.test(trimmed)) {
+    return Number.NaN;
+  }
+  return Number(trimmed);
+}
 interface PendingDonation {
   reference: string;
   amount: number;
@@ -137,9 +144,7 @@ export function DonationForm() {
   const [error, setError] = useState("");
   const finalAmount =
     amount === "custom"
-      ? customAmount.trim() === ""
-        ? Number.NaN
-        : Number(customAmount)
+      ? parseDonationAmount(customAmount)
       : amount;
   const causeLabel =
     causes.find((item) => item.id === cause)?.label ??
@@ -286,7 +291,10 @@ export function DonationForm() {
     }
   }
   function validate(): string {
-    if (!Number.isFinite(finalAmount) || finalAmount < 50) {
+    if (!Number.isFinite(finalAmount)) {
+      return "Please enter a valid donation amount.";
+    }
+    if (finalAmount < 50) {
       return "Minimum donation is $50 USD.";
     }
     if (finalAmount > 1_000_000) {

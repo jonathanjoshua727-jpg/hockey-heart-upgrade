@@ -158,6 +158,7 @@ export async function initializeDonation(
   if (!Number.isFinite(amount) || amount < 50 || amount > 1_000_000) {
     throw new Error("Please enter a valid donation amount between $50 and $1,000,000 USD.");
   }
+  const amountUsd = Math.round(amount * 100) / 100;
 
   const settings = await fetchPublicPaymentSettings();
 
@@ -176,7 +177,7 @@ export async function initializeDonation(
     method: "POST",
     body: JSON.stringify({
       ...input,
-      amount,
+      amount: amountUsd,
       currency: "USD",
     }),
   });
