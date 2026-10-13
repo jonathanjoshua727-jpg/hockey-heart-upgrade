@@ -1,5 +1,5 @@
- Router, type IRouter } from "express";
-import { z } from "zod/v4";{ 
+import { Router, type IRouter } from "express";
+import { z } from "zod/v4"; 
 import { db, donationsTable, adminCredentialsTable } from "@workspace/db";
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import crypto from "node:crypto";
@@ -56,7 +56,7 @@ router.post("/admin/login", async (req, res) => {
   }
   const parsed = z
     .object({
-      usernimportame: z.string().min(1).max(100),
+      username: z.string().min(1).max(100),
       password: z.string().min(8).max(200),
     })
     .safeParse(req.body);
