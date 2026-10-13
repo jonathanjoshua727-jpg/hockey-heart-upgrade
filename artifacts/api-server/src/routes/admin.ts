@@ -57,7 +57,14 @@ router.post("/admin/login", async (req, res) => {
   const parsed = adminLoginSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({
-      error: "Invalid login request. Username and password are required.",
+      error: `Invalid login payload: ${parsed.error.issues
+        .map((issue) => {
+          const field = issue.path[0];
+          return field === "username" || field === "password"
+            ? `${field} ${issue.message}`
+            : "unexpected request field";
+        })
+        .join("; ")}`,
     });
     return;
   }

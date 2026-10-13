@@ -102,6 +102,7 @@ export default function AdminLogin() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="admin"
+                  maxLength={100}
                   required
                   autoComplete="username"
                   className="w-full bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white placeholder:text-white/30 focus:outline-none focus:border-[#a8d8ea]/60 focus:ring-1 focus:ring-[#a8d8ea]/40 transition-colors"
@@ -118,6 +119,7 @@ export default function AdminLogin() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  maxLength={200}
                   placeholder={mode === "setup" ? "Min. 8 characters" : "••••••••"}
                   required
                   autoComplete={mode === "setup" ? "new-password" : "current-password"}

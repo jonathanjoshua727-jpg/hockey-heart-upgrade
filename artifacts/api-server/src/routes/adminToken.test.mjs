@@ -66,6 +66,20 @@ test("validates login payload keys and field types without treating short passwo
     adminLoginSchema.safeParse({ username: 123, password: "password" }).success,
     false,
   );
+  assert.equal(
+    adminLoginSchema.safeParse({
+      username: "admin",
+      password: "p".repeat(201),
+    }).success,
+    false,
+  );
+  assert.equal(
+    adminLoginSchema.safeParse({
+      username: "u".repeat(101),
+      password: "password",
+    }).success,
+    false,
+  );
 });
 
 test("rejects malformed, modified, and expired admin tokens", () => {
