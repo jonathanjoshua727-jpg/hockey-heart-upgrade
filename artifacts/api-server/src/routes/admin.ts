@@ -6,7 +6,7 @@ import crypto from "node:crypto";
 import { issueAdminToken, requireAdmin } from "../lib/adminToken";
 import { logger } from "../lib/logger";
 import { sendDonationConfirmationDetailed } from "../lib/mailer";
-import { adminLoginSchema } from "./adminValidation";
+import { adminLoginSchema, parseAdminLoginBody } from "./adminValidation";
 
 const router: IRouter = Router();
 
@@ -47,7 +47,7 @@ function rateLimited(ip: string): boolean {
 }
 
 // ── Login (bootstraps the first admin account) ─────────────────────────────
-router.post("/admin/login", async (req, res) => {
+router.post("/admin/login", ...parseAdminLoginBody, async (req, res) => {
   if (rateLimited(req.ip ?? "unknown")) {
     res.status(429).json({
       error: "Too many attempts. Try again later.",
