@@ -154,6 +154,11 @@ async function jsonFetch<T>(
 export async function initializeDonation(
   input: InitializeInput,
 ): Promise<InitializeResult> {
+  const amount = Number(input.amount);
+  if (!Number.isFinite(amount) || amount < 50 || amount > 1_000_000) {
+    throw new Error("Please enter a valid donation amount between $50 and $1,000,000 USD.");
+  }
+
   const settings = await fetchPublicPaymentSettings();
 
   if (input.method === "card" && !settings.cardEnabled) {
@@ -171,6 +176,7 @@ export async function initializeDonation(
     method: "POST",
     body: JSON.stringify({
       ...input,
+      amount,
       currency: "USD",
     }),
   });

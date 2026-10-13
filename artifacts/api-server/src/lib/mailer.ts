@@ -9,12 +9,20 @@ export interface DonationEmailData {
   date: string;
 }
 
+export interface ContactMessageData {
+  name: string;
+  email: string;
+  message: string;
+}
+
 const RESEND_API_URL = "https://api.resend.com/emails";
 
 const FROM_ADDRESS =
   process.env.DONATION_EMAIL_FROM ??
   "Hockey Heart Initiative <donations@hockeyheartinitiative.com>";
 const REPLY_TO = "hockeyheartinitiative@gmail.com";
+const CONTACT_RECIPIENT =
+  process.env.CONTACT_EMAIL ?? "contact@hockeyheartinitiative.com";
 
 function escapeHtml(s: string): string {
   return s
@@ -52,6 +60,62 @@ function buildHtml(data: DonationEmailData): string {
       <p style="font-size: 12px; color: #9ca3af; margin-top: 24px;">Hockey Heart Initiative — empowering youth through hockey.<br/>Questions? Reply to this email or contact ${REPLY_TO}.</p>
     </div>
   </div>`;
+}
+
+function buildContactHtml(data: ContactMessageData): string {
+  return `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1a2332;">
+    <h1>Website contact message</h1>
+    <p><strong>Name:</strong> ${escapeHtml(data.name)}</p>
+    <p><strong>Email:</strong> ${escapeHtml(data.email)}</p>
+    <p><strong>Message:</strong></p>
+    <p style="white-space: pre-wrap;">${escapeHtml(data.message)}</p>
+  </div>`;
+}
+
+export async function sendContactMessage(
+  data: ContactMessageData,
+): Promise<SendResult> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    logger.error("RESEND_API_KEY is not set; cannot send contact message");
+    return { ok: false, error: "Email service is not configured." };
+  }
+
+  try {
+    const response = await fetch(RESEND_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: FROM_ADDRESS,
+        to: [CONTACT_RECIPIENT],
+        reply_to: data.email,
+        subject: "Website contact message",
+        html: buildContactHtml(data),
+      }),
+    });
+    if (!response.ok) {
+      logger.error(
+        { status: response.status },
+        "Resend rejected contact message",
+      );
+      return {
+        ok: false,
+        status: response.status,
+        error: "Email service could not accept your message.",
+      };
+    }
+
+    const body = (await response.json().catch(() => null)) as { id?: string } | null;
+    logger.info({ resendId: body?.id ?? null }, "Contact message sent");
+    return { ok: true, status: response.status, id: body?.id };
+  } catch (error) {
+    logger.error({ error }, "Could not send contact message");
+    return { ok: false, error: "Could not reach the email service." };
+  }
 }
 
 /**

@@ -1,7 +1,7 @@
 import { z } from "zod/v4";
 
 export const initializeSchema = z.object({
-  amount: z.number().min(50).max(1_000_000),
+  amount: z.number().finite().min(50).max(1_000_000),
   currency: z.literal("USD").default("USD"),
   causeId: z.string().trim().min(1).max(100),
   causeLabel: z.string().trim().min(1).max(200),

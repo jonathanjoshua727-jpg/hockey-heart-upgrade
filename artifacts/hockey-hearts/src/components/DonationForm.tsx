@@ -137,7 +137,9 @@ export function DonationForm() {
   const [error, setError] = useState("");
   const finalAmount =
     amount === "custom"
-      ? Number.parseFloat(customAmount || "0")
+      ? customAmount.trim() === ""
+        ? Number.NaN
+        : Number(customAmount)
       : amount;
   const causeLabel =
     causes.find((item) => item.id === cause)?.label ??
@@ -284,11 +286,11 @@ export function DonationForm() {
     }
   }
   function validate(): string {
-    if (
-      !Number.isFinite(finalAmount) ||
-      finalAmount < 50
-    ) {
+    if (!Number.isFinite(finalAmount) || finalAmount < 50) {
       return "Minimum donation is $50 USD.";
+    }
+    if (finalAmount > 1_000_000) {
+      return "Maximum donation is $1,000,000 USD.";
     }
     if (!email.trim() || !email.includes("@")) {
       return "Please enter a valid email address.";
@@ -379,6 +381,7 @@ export function DonationForm() {
       );
       window.location.assign(init.paymentLink);
     } catch (e) {
+      console.error("[donation] Payment initialization failed:", e);
       donationInitializationInFlight.current = false;
       setLoading(false);
       setError(
@@ -601,6 +604,7 @@ export function DonationForm() {
             <Input
               type="number"
               min={50}
+              max={1_000_000}
               step="0.01"
               placeholder="Custom"
               value={customAmount}

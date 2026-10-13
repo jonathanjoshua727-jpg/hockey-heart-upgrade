@@ -59,6 +59,25 @@ test("accepts an explicit USD currency and trims donor name and email", () => {
   }
 });
 
+test("rejects empty, non-finite, and out-of-range donation amounts", () => {
+  const invalidAmounts = [
+    "",
+    null,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    49.99,
+    1_000_000.01,
+  ];
+  for (const amount of invalidAmounts) {
+    const result = initializeSchema.safeParse({
+      ...validDonation,
+      amount,
+    });
+
+    assert.equal(result.success, false, `expected ${String(amount)} to be rejected`);
+  }
+});
+
 test("rejects unsupported currencies and invalid payment methods", () => {
   const currency = initializeSchema.safeParse({
     ...validDonation,

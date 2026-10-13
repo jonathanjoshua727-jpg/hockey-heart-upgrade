@@ -6,6 +6,7 @@ import {
   requireAdmin,
   verifyAdminToken,
 } from "../lib/adminToken.ts";
+import { adminLoginSchema } from "./adminValidation.ts";
 
 process.env.SESSION_SECRET = "unit-test-session-secret";
 
@@ -42,6 +43,29 @@ test("issues and verifies an expiring admin token", () => {
   assert.deepEqual(verifyAdminToken(issued.token), {
     username: "administrator",
   });
+});
+
+test("validates login payload keys and field types without treating short passwords as malformed", () => {
+  assert.equal(
+    adminLoginSchema.safeParse({ username: "admin", password: "short" }).success,
+    true,
+  );
+  assert.equal(
+    adminLoginSchema.safeParse({ username: " ", password: "password" }).success,
+    false,
+  );
+  assert.equal(
+    adminLoginSchema.safeParse({ email: "admin", password: "password" }).success,
+    false,
+  );
+  assert.equal(
+    adminLoginSchema.safeParse({ username: "admin", password: "" }).success,
+    false,
+  );
+  assert.equal(
+    adminLoginSchema.safeParse({ username: 123, password: "password" }).success,
+    false,
+  );
 });
 
 test("rejects malformed, modified, and expired admin tokens", () => {

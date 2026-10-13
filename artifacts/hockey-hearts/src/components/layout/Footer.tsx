@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import { CircleDot, Mail, Phone, MessageCircle, Facebook, Twitter, Instagram, Linkedin, Youtube } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,8 @@ import { getContactInfo, getSiteSettings } from "@/lib/contentStore";
 import { trackClick } from "@/lib/analytics";
 
 export function Footer() {
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [newsletterFeedback, setNewsletterFeedback] = useState("");
   const contact = getContactInfo();
   const settings = getSiteSettings();
 
@@ -103,15 +106,33 @@ export function Footer() {
             <p className="text-primary-foreground/70 text-sm mb-4">
               Subscribe to our newsletter for updates on campaigns and impact stories.
             </p>
-            <form className="space-y-2" onSubmit={(e) => e.preventDefault()}>
+            <form
+              className="space-y-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setNewsletterFeedback("Newsletter subscriptions are coming soon.");
+              }}
+            >
               <Input 
                 type="email" 
                 placeholder="Email address" 
+                value={newsletterEmail}
+                onChange={(event) => {
+                  setNewsletterEmail(event.target.value);
+                  setNewsletterFeedback("");
+                }}
+                required
+                aria-label="Email address for newsletter"
                 className="bg-primary-foreground/10 border-primary-foreground/20 text-white placeholder:text-primary-foreground/50 focus-visible:ring-secondary"
               />
-              <Button className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
+              <Button type="submit" className="w-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
                 Subscribe
               </Button>
+              {newsletterFeedback && (
+                <p role="status" className="text-sm text-primary-foreground/80">
+                  {newsletterFeedback}
+                </p>
+              )}
             </form>
           </div>
 

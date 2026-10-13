@@ -1,5 +1,7 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Response } from "express";
+import { z } from "zod/v4";
 import { and, asc, desc, eq } from "drizzle-orm";
+import { requireAdmin } from "../lib/adminToken";
 import {
   db,
   homepageContentTable,
@@ -11,8 +13,65 @@ import {
   siteSettingsTable,
   imagesTable,
 } from "@workspace/db";
+import {
+  campaignInputSchema,
+  campaignUpdateSchema,
+  contentIdSchema,
+  contentSlugSchema,
+  faqInputSchema,
+  faqUpdateSchema,
+  homepageContentInputSchema,
+  imageInputSchema,
+  imageUpdateSchema,
+  newsInputSchema,
+  newsUpdateSchema,
+  pageContentInputSchema,
+  pageContentUpdateSchema,
+  programInputSchema,
+  programUpdateSchema,
+  siteSettingsInputSchema,
+  siteSettingsUpdateSchema,
+} from "./contentValidation";
 
 const router: IRouter = Router();
+
+router.use((req, res, next) => {
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
+    return requireAdmin(req, res, next);
+  }
+  next();
+});
+
+function parseBody<T extends z.ZodType>(
+  schema: T,
+  body: unknown,
+  res: Response,
+): z.output<T> | null {
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: "Invalid request body.",
+      details: parsed.error.issues.map((issue) => ({
+        path: issue.path.join("."),
+        message: issue.message,
+      })),
+    });
+    return null;
+  }
+  return parsed.data;
+}
+
+function parseParam(
+  schema: typeof contentIdSchema | typeof contentSlugSchema,
+  value: string,
+  name: string,
+  res: Response,
+): string | null {
+  const parsed = schema.safeParse(value);
+  if (parsed.success) return parsed.data;
+  res.status(400).json({ error: `Invalid ${name}.` });
+  return null;
+}
 
 /* ─────────────────────────────────────────────
    Homepage
@@ -28,19 +87,21 @@ router.get("/content/homepage", async (_req, res) => {
 });
 
 router.put("/content/homepage", async (req, res) => {
+  const content = parseBody(homepageContentInputSchema, req.body, res);
+  if (!content) return;
   const now = new Date();
 
   const [homepage] = await db
     .insert(homepageContentTable)
     .values({
       id: 1,
-      ...req.body,
+      ...content,
       updatedAt: now,
     })
     .onConflictDoUpdate({
       target: homepageContentTable.id,
       set: {
-        ...req.body,
+        ...content,
         updatedAt: now,
       },
     })
@@ -79,19 +140,24 @@ router.get("/content/pages/:slug", async (req, res) => {
 });
 
 router.put("/content/pages/:slug", async (req, res) => {
+  const slug = parseParam(contentSlugSchema, req.params.slug, "page slug", res);
+  if (!slug) return;
+  const content = parseBody(pageContentInputSchema, req.body, res);
+  if (!content) return;
   const now = new Date();
 
   const [page] = await db
     .insert(pagesTable)
     .values({
-      slug: req.params.slug,
-      ...req.body,
+      slug,
+      ...content,
       updatedAt: now,
     })
     .onConflictDoUpdate({
       target: pagesTable.slug,
       set: {
-        ...req.body,
+        slug,
+        ...content,
         updatedAt: now,
       },
     })
@@ -130,22 +196,28 @@ router.get("/content/campaigns/:slug", async (req, res) => {
 });
 
 router.post("/content/campaigns", async (req, res) => {
+  const content = parseBody(campaignInputSchema, req.body, res);
+  if (!content) return;
   const [campaign] = await db
     .insert(campaignsTable)
-    .values(req.body)
+    .values(content)
     .returning();
 
   res.status(201).json(campaign);
 });
 
 router.put("/content/campaigns/:id", async (req, res) => {
+  const id = parseParam(contentIdSchema, req.params.id, "campaign id", res);
+  if (!id) return;
+  const content = parseBody(campaignUpdateSchema, req.body, res);
+  if (!content) return;
   const [campaign] = await db
     .update(campaignsTable)
     .set({
-      ...req.body,
+      ...content,
       updatedAt: new Date(),
     })
-    .where(eq(campaignsTable.id, req.params.id))
+    .where(eq(campaignsTable.id, id))
     .returning();
 
   if (!campaign) {
@@ -157,9 +229,11 @@ router.put("/content/campaigns/:id", async (req, res) => {
 });
 
 router.delete("/content/campaigns/:id", async (req, res) => {
+  const id = parseParam(contentIdSchema, req.params.id, "campaign id", res);
+  if (!id) return;
   await db
     .delete(campaignsTable)
-    .where(eq(campaignsTable.id, req.params.id));
+    .where(eq(campaignsTable.id, id));
 
   res.sendStatus(204);
 });
@@ -179,22 +253,28 @@ router.get("/content/programs", async (_req, res) => {
 });
 
 router.post("/content/programs", async (req, res) => {
+  const content = parseBody(programInputSchema, req.body, res);
+  if (!content) return;
   const [program] = await db
     .insert(programsTable)
-    .values(req.body)
+    .values(content)
     .returning();
 
   res.status(201).json(program);
 });
 
 router.put("/content/programs/:id", async (req, res) => {
+  const id = parseParam(contentIdSchema, req.params.id, "program id", res);
+  if (!id) return;
+  const content = parseBody(programUpdateSchema, req.body, res);
+  if (!content) return;
   const [program] = await db
     .update(programsTable)
     .set({
-      ...req.body,
+      ...content,
       updatedAt: new Date(),
     })
-    .where(eq(programsTable.id, req.params.id))
+    .where(eq(programsTable.id, id))
     .returning();
 
   if (!program) {
@@ -206,9 +286,11 @@ router.put("/content/programs/:id", async (req, res) => {
 });
 
 router.delete("/content/programs/:id", async (req, res) => {
+  const id = parseParam(contentIdSchema, req.params.id, "program id", res);
+  if (!id) return;
   await db
     .delete(programsTable)
-    .where(eq(programsTable.id, req.params.id));
+    .where(eq(programsTable.id, id));
 
   res.sendStatus(204);
 });
@@ -228,10 +310,12 @@ router.get("/content/news", async (_req, res) => {
 });
 
 router.get("/content/news/:slug", async (req, res) => {
+  const slug = parseParam(contentSlugSchema, req.params.slug, "article slug", res);
+  if (!slug) return;
   const [article] = await db
     .select()
     .from(newsTable)
-    .where(eq(newsTable.slug, req.params.slug))
+    .where(eq(newsTable.slug, slug))
     .limit(1);
 
   if (!article) {
@@ -243,22 +327,28 @@ router.get("/content/news/:slug", async (req, res) => {
 });
 
 router.post("/content/news", async (req, res) => {
+  const content = parseBody(newsInputSchema, req.body, res);
+  if (!content) return;
   const [article] = await db
     .insert(newsTable)
-    .values(req.body)
+    .values(content)
     .returning();
 
   res.status(201).json(article);
 });
 
 router.put("/content/news/:id", async (req, res) => {
+  const id = parseParam(contentIdSchema, req.params.id, "article id", res);
+  if (!id) return;
+  const content = parseBody(newsUpdateSchema, req.body, res);
+  if (!content) return;
   const [article] = await db
     .update(newsTable)
     .set({
-      ...req.body,
+      ...content,
       updatedAt: new Date(),
     })
-    .where(eq(newsTable.id, req.params.id))
+    .where(eq(newsTable.id, id))
     .returning();
 
   if (!article) {
@@ -270,9 +360,11 @@ router.put("/content/news/:id", async (req, res) => {
 });
 
 router.delete("/content/news/:id", async (req, res) => {
+  const id = parseParam(contentIdSchema, req.params.id, "article id", res);
+  if (!id) return;
   await db
     .delete(newsTable)
-    .where(eq(newsTable.id, req.params.id));
+    .where(eq(newsTable.id, id));
 
   res.sendStatus(204);
 });
@@ -293,22 +385,28 @@ router.get("/content/faqs", async (_req, res) => {
 });
 
 router.post("/content/faqs", async (req, res) => {
+  const content = parseBody(faqInputSchema, req.body, res);
+  if (!content) return;
   const [faq] = await db
     .insert(faqsTable)
-    .values(req.body)
+    .values(content)
     .returning();
 
   res.status(201).json(faq);
 });
 
 router.put("/content/faqs/:id", async (req, res) => {
+  const id = parseParam(contentIdSchema, req.params.id, "FAQ id", res);
+  if (!id) return;
+  const content = parseBody(faqUpdateSchema, req.body, res);
+  if (!content) return;
   const [faq] = await db
     .update(faqsTable)
     .set({
-      ...req.body,
+      ...content,
       updatedAt: new Date(),
     })
-    .where(eq(faqsTable.id, req.params.id))
+    .where(eq(faqsTable.id, id))
     .returning();
 
   if (!faq) {
@@ -320,9 +418,11 @@ router.put("/content/faqs/:id", async (req, res) => {
 });
 
 router.delete("/content/faqs/:id", async (req, res) => {
+  const id = parseParam(contentIdSchema, req.params.id, "FAQ id", res);
+  if (!id) return;
   await db
     .delete(faqsTable)
-    .where(eq(faqsTable.id, req.params.id));
+    .where(eq(faqsTable.id, id));
 
   res.sendStatus(204);
 });
@@ -342,17 +442,23 @@ router.get("/content/settings", async (_req, res) => {
 });
 
 router.put("/content/settings", async (req, res) => {
+  const settingsInput = parseBody(
+    siteSettingsUpdateSchema,
+    req.body,
+    res,
+  );
+  if (!settingsInput) return;
   const [settings] = await db
     .insert(siteSettingsTable)
     .values({
       id: 1,
-      ...req.body,
+      ...settingsInput,
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
       target: siteSettingsTable.id,
       set: {
-        ...req.body,
+        ...settingsInput,
         updatedAt: new Date(),
       },
     })
@@ -376,19 +482,25 @@ router.get("/content/images", async (_req, res) => {
 });
 
 router.post("/content/images", async (req, res) => {
+  const content = parseBody(imageInputSchema, req.body, res);
+  if (!content) return;
   const [image] = await db
     .insert(imagesTable)
-    .values(req.body)
+    .values(content)
     .returning();
 
   res.status(201).json(image);
 });
 
 router.put("/content/images/:id", async (req, res) => {
+  const id = parseParam(contentIdSchema, req.params.id, "image id", res);
+  if (!id) return;
+  const content = parseBody(imageUpdateSchema, req.body, res);
+  if (!content) return;
   const [image] = await db
     .update(imagesTable)
-    .set(req.body)
-    .where(eq(imagesTable.id, req.params.id))
+    .set(content)
+    .where(eq(imagesTable.id, id))
     .returning();
 
   if (!image) {
@@ -400,9 +512,11 @@ router.put("/content/images/:id", async (req, res) => {
 });
 
 router.delete("/content/images/:id", async (req, res) => {
+  const id = parseParam(contentIdSchema, req.params.id, "image id", res);
+  if (!id) return;
   await db
     .delete(imagesTable)
-    .where(eq(imagesTable.id, req.params.id));
+    .where(eq(imagesTable.id, id));
 
   res.sendStatus(204);
 });

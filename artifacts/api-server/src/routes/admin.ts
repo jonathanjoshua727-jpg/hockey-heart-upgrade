@@ -6,6 +6,7 @@ import crypto from "node:crypto";
 import { issueAdminToken, requireAdmin } from "../lib/adminToken";
 import { logger } from "../lib/logger";
 import { sendDonationConfirmationDetailed } from "../lib/mailer";
+import { adminLoginSchema } from "./adminValidation";
 
 const router: IRouter = Router();
 
@@ -48,21 +49,24 @@ router.post("/admin/login", async (req, res) => {
     res.status(429).json({ error: "Too many attempts. Try again later." });
     return;
   }
-  const parsed = z
-    .object({
-      username: z.string().min(1).max(100),
-      password: z.string().min(8).max(200),
-    })
-    .safeParse(req.body);
+  const parsed = adminLoginSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Invalid credentials." });
+    res.status(400).json({
+      error: "Invalid login request. Username and password are required.",
+    });
     return;
   }
-  const username = parsed.data.username.toLowerCase().trim();
+  const username = parsed.data.username.toLowerCase();
 
   const existing = await db.select().from(adminCredentialsTable).limit(1);
 
   if (existing.length === 0) {
+    if (parsed.data.password.length < 8) {
+      res.status(400).json({
+        error: "The first admin password must be at least 8 characters.",
+      });
+      return;
+    }
     // First login bootstraps the server-side admin account. The insert is
     // guarded by the unique constraint + re-check to avoid a bootstrap race.
     try {
